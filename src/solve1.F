@@ -1426,7 +1426,8 @@
 !--------------------------------------------------------------------
 !  U-equation
 
-      IF( iinit.eq.10 .and. mtime.lt.t2_uforce )THEN
+      IF( iinit.eq.10 )THEN
+      IF( mtime.lt.t2_uforce )THEN
         ! u-forcing for squall-line initialization:
         ! (Morrison et al, 2015, JAS, pg 315)
         gamm = 1.0
@@ -1447,6 +1448,7 @@
         enddo
         enddo
         enddo
+      ENDIF
       ENDIF
       if(timestats.ge.1) time_rdamp=time_rdamp+mytime()
 
