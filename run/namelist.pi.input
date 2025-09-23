@@ -2,9 +2,9 @@
 nx           =    128,
 ny           =    128,
 nz           =    128,
-ppnode       =      2,
-timeformat   =       1,
-timestats    =       1,
+ppnode       =      1,
+timeformat   =      1,
+timestats    =      1,
 terrain_flag = .false.,
 procfiles    = .false.,
 /
@@ -24,7 +24,7 @@ prclfrq =   10.0,
 
 &param2
 cm1setup  =  3,
-testcase  =  16,
+testcase  =  0,
 adapt_dt  =  0,
 irst      =  0,
 rstnum    =  1,
@@ -120,7 +120,7 @@ second  =       00,
 &param12
 isfcflx    =      0,
 sfcmodel   =      0,
-oceanmodel =      1,
+oceanmodel =      0,
 initsfc    =      1,
 tsk0       = 299.28,
 tmn0       = 297.28,
@@ -161,7 +161,7 @@ tot_y_len =  120000.0,
 /
 
 &param6
-stretch_z =  0,
+stretch_z =  4,
 ztop      =  2980.0,
 str_bot   =  2000.0,
 str_top   =  2980.0,
