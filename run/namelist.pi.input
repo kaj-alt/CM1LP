@@ -341,9 +341,9 @@ nparcelsMax  = 50000000,   ! the total allowable number of particles over the wh
 drop_mult = 0,   ! Make droplets inert (no multiplicity)
 drop_inject_elapse = -4.0,  !Time between spray injection
 drop_inject_time = 1.0e20,  !Effectively never inject
-two_way_coupling = .true.,  ! Enable two-way coupling between droplets and flow
-drop_evap = .false.,        ! Disable droplet evaporation (keep sink path minimal)
-drop_traj = .false.,        ! Disable droplet trajectory tracking
+two_way_coupling = 1,  ! Enable two-way coupling between droplets and flow
+drop_evap = 0,        ! Disable droplet evaporation (keep sink path minimal)
+drop_traj = 0,        ! Disable droplet trajectory tracking
 /
 
 &param14
