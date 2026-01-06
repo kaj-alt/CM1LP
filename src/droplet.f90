@@ -79,6 +79,7 @@
       use parcel_module
       use mpi
       use MersenneTwister_mod
+      use cutensorex
 
       implicit none
 
@@ -178,6 +179,8 @@
       integer, dimension(:), allocatable :: backfill_ind   ! indicies of valid droplets to backfill into 
                                                            ! holes  in "pdata" array created by droplet 
                                                            ! fall-out or departure
+      ! arrays used by count_prefix operator
+      integer :: Cindx(nparcelsLocal)
       logical :: msk(nparcelsLocal)
 
       logical, parameter :: verbose=.false.
@@ -575,19 +578,41 @@
                  (pdata_locind(np,2) .eq. undefined_index)
      enddo
 
-     !CPU based calculations 
+
+     !$acc data create(Cindx)
+
+     !$acc parallel loop gang vector default(present)
      do np = 1, numHoles
        holes_ind(np) = undefined_index
      end do
+     !$acc end parallel
 
-     i=0
-     do np = 1, nparcelsLocal
-       if (msk(np)) then 
-          i = i + 1
-          holes_ind(i) = np
-       end if
+     ! Use a CUDA-based function count_prefix determins which array
+     ! elements satisfy a particular condition.  For example consider
+     ! locind = [1 2 3 4 undefined 5 6 7 undefined 8]
+     ! C = COUNT_PREFIX(mask = (locind .eq. undefined), EXCLUSIVE=.true.)
+     ! would generate the array 
+     ! C = [0 0 0 0 0 1 1 1 1 2]
+     Cindx = count_prefix(mask=msk,exclusive=.true.)
+
+     ! collect the location of the special values into a smaller array
+     !$acc parallel loop gang vector default(present)
+     do np = 1, nparcelsLocal-1
+        if ( Cindx(np) .ne. Cindx(np+1) ) then 
+           holes_ind(Cindx(np)+1) = np
+        end if
      end do
-     !$acc update device(holes_ind)
+     !$acc end parallel
+
+     ! Special treatment for the last value in the array
+     !$acc kernels default(present) 
+     if(msk(nparcelsLocal)) then
+       holes_ind(Cindx(nparcelsLocal)+1) = nparcelsLocal
+     endif
+     !$acc end kernels
+
+     !$acc end data
+
 
      if(timestats.ge.1) time_dropC1=time_dropC1+mytime()
 
@@ -713,6 +738,7 @@
 !  get height ASL:
 
     if ( terrain_flag ) then
+       print *,'WARNING: entering code that has not been ported to OpenACC'
        call getparcelzs(xh,uh,ruh,xf,yh,vh,rvh,yf,zs,pdata)
        DO np=1,nparcelsLocalActive
          ! get z from sigma:
