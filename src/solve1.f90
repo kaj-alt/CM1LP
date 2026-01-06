@@ -798,7 +798,6 @@
 !  2nd-order diffusion, fixed viscosity (eg, DNS and idealized test):
 
       IF( difforder.eq.2 )THEN
-        print *,'WARNING: solve1: diffusion operator not support with OPENACC'
         idiffge1:  &
         if(idiff.ge.1)then
 
@@ -1689,7 +1688,6 @@
 
       doeddyrec:  &
       IF( do_recycle )THEN
-        print *,'WARNING: solve1: do_eddy_{recyr,recys} code not ported to OPENACC'
         if( do_recycle_w )then
           call   do_eddy_recyw(dt,xh,xf,yh,yf,zh,zf,u3d,v3d,w3d,uten1,vten1,wten1,urecyw,vrecyw,wrecyw,trecyw,out3d)
         endif

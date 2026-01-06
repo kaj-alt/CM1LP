@@ -624,7 +624,6 @@
           ! bulk-Ri method:
 
           IF( ipbl.eq.2 )THEN
-            stop 'ERROR: call to gethpbl2 not supported in OPENACC'
             ! (note: for ipbl=1,3,4,5 pbl depth is calculated within the PBL subroutine)
             call gethpbl2(psfc,qsfc,thflux,qvflux,ust,tsk,zh,th0,tha,divx,ugr,vgr,dum8(ib,jb,1),dum8(ib,jb,2),dum8(ib,jb,3),dum8(ib,jb,4),hpbl,thten)
           ENDIF
@@ -734,7 +733,6 @@
 
         IF( sfcmodel.eq.5 )THEN
 
-          stop 'ERROR: call to cm1most not supported in OPENACC'
           call   cm1most(u1,v1,s1,t1,tst,thflux,zol,mol,rmol,       &
                          phim,phih,psim,psih,ppten(ib,jb,1),        &
                          u10,v10,s10,xland,znt,rznt,ust,cd,ch,cq,   &
@@ -747,7 +745,6 @@
         IF( (sfcmodel.eq.2) .or. (sfcmodel.eq.3) .or. (sfcmodel.eq.4) .or. (sfcmodel.eq.6) .or. (sfcmodel.eq.7) )THEN
           ! surface layer:
         if( sfcmodel.eq.2 )then
-          stop 'ERROR: call to SFCLAY not supported in OPENACC'
           call SFCLAY(dum1,dum2,dum4,divx,prs,dum5,      &
                        CP,G,ROVCP,RD,XLV,lv1,lv2,PSFC,CHS,CHS2,CQS2,CPMM, &
                        ZNT,UST,hpbl,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
@@ -763,7 +760,6 @@
                        1  ,ni , 1  ,nj , 1  ,nk ,                    &
                        ustm,ck,cka,cd,cda,isftcflx,iz0tlnd,z0t,z0q   )
         elseif( sfcmodel.eq.3 )then
-          stop 'ERROR: call to SFCLAYREV not supported in OPENACC'
           call SFCLAYREV(dum1,dum2,dum4,divx,prs,dum5,   &
                        CP,G,ROVCP,RD,XLV,lv1,lv2,PSFC,CHS,CHS2,CQS2,CPMM, &
                        ZNT,UST,hpbl,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
@@ -841,7 +837,6 @@
           enddo
           ! stop 'surf_and_turb: after call to SF_GFDL'
         elseif( sfcmodel.eq.6 )then
-          stop 'ERROR: call to SFCLAY_mynn not supported in OPENACC'
           call SFCLAY_mynn(                                                                                     &
                      U3D=dum1,V3D=dum2,T3D=dum4,QV3D=divx,P3D=prs,dz8w=dum5,                                    &
                      CP=cp,G=g,ROVCP=rovcp,R=rd,XLV=xlv,PSFCPA=psfc,CHS=chs,CHS2=chs2,CQS2=cqs2,CPM=cpmm,       &
@@ -908,7 +903,6 @@
             enddo
           endif
 
-          stop 'ERROR: call to MYSFC not supported in OPENACC'
           call   MYJSFC(ITIMESTEP=nstep,  &
                         HT=zs(ib,j),  &
                         DZ=tmp_myj(ibmyj,kbmyj,1),                               &
@@ -949,7 +943,6 @@
           dtmin = dt/60.0
 
         IF( update_sfc .and. testcase.ne.11 )THEN
-          print *,'ERROR: call to SLAB not supported in OPENACC'
           ! slab scheme (MM5/WRF):
           call SLAB(dum4,divx,prs,FLHC,FLQC,                        &
                        PSFC,XLAND,TMN,HFX,QFX,LH,TSK,QSFC,CHKLOWQ,  &
@@ -1209,7 +1202,6 @@
     IF(oceanmodel.eq.2)THEN
     IF( update_sfc )THEN
       if( getsfc )then
-       stop 'ERROR: call to oceanml not supported in OPENACC'
 
         CALL oceanml(tml,t0ml,hml,h0ml,huml,hvml,ust,dum1,dum2, &
                      tmoml,f2d,g,oml_gamma,                     &
@@ -1518,7 +1510,6 @@
                         kmh,kmv,t11,t12,t13,t22,t23,t33,ua,ugr,va,vgr,wa,avgsfcu,avgsfcv,avgsfcs,bndy,kbdy)
 
         if( do_ib )then
-          stop 'ERROR: call to drag_obstacles not supported in OPENACC'
           call drag_obstacles(xh,yh,zh,zf,rho,rf,dum1,dum2,dum3,dum4,dum5,dum6,t11,t12,t13,t22,t23,t33,ua,va,wa,kbdy)
         endif
 
@@ -1789,7 +1780,6 @@
             enddo
           endif
         endif
-        stop 'ERROR: call to ysu not supported in OPENACC'
         call ysu(u3d=dum1,v3d=dum2,th3d=dum3,t3d=dum4,qv3d=divx,                    &
                   qc3d=ppten,qi3d=dum8,p3d=prs,p3di=dum6,pi3d=dum7,                 &
                   rublten=upten,rvblten=vpten,rthblten=thpten,                      &
@@ -1866,7 +1856,6 @@
           enddo
           enddo
         endif
-        stop 'ERROR: call to BL_GFSEDMF not supported in OPENACC'
 
         call  BL_GFSEDMF(U3D=dum1,V3D=dum2,TH3D=dum3,T3D=dum4,QV3D=divx,            &
                   QC3D=ppten,QI3D=dum8,P3D=prs,PI3D=dum7,                           &
@@ -2021,7 +2010,6 @@
           initflag=0
         ENDIF
 
-        stop 'ERROR: call to mynn_bl_driver not supported in OPENACC'
         call mynn_bl_driver(                                                         &
         initflag=initflag,grav_settling=grav_settling,                               &
         restart=.false.,cycling=.false.,                                             &
@@ -2156,7 +2144,6 @@
           tmp_myj(i,k,28) = 0.0
         enddo
         enddo
-        stop 'ERROR: call to MYJPBL not supported in OPENACC'
         call     MYJPBL(dt=DT,STEPBL=1,HT=zs(ib,j),DZ=tmp_myj(ibmyj,kbmyj,6)                     &
                        ,PMID=tmp_myj(ibmyj,kbmyj,7),PINT=tmp_myj(ibmyj,kbmyj,8),TH=tmp_myj(ibmyj,kbmyj,9),T=tmp_myj(ibmyj,kbmyj,10),EXNER=tmp_myj(ibmyj,kbmyj,11),QV=tmp_myj(ibmyj,kbmyj,12),QCW=tmp_myj(ibmyj,kbmyj,13),QCI=tmp_myj(ibmyj,kbmyj,14),QCS=tmp_myj(ibmyj,kbmyj,1),QCR=tmp_myj(ibmyj,kbmyj,2),QCG=tmp_myj(ibmyj,kbmyj,3)    &
                        ,U=tmp_myj(ibmyj,kbmyj,15),V=tmp_myj(ibmyj,kbmyj,16),RHO=tmp_myj(ibmyj,kbmyj,17),TSK=tsk(ib,j),QSFC=qsfc(ib,j),CHKLOWQ=chklowq(ib,j),THZ0=thz0(ib,j),QZ0=qz0(ib,j),UZ0=uz0(ib,j),VZ0=vz0(ib,j)      &
@@ -2720,7 +2707,6 @@
 
 !-----------------------------------------------------------------------
 
-      stop 'ERROR: call to turbsmag not supported in OPENACC'
 
       temx = 0.125*dx*dx/dt
       temy = 0.125*dy*dy/dt
@@ -2966,7 +2952,6 @@
       real, parameter :: prinv   = 1.0/prandtl
       real, parameter :: dmin    = 1.0e-10
 
-        stop 'ERROR: call to turbparam_horiz not supported in OPENACC'
 
 !--------------------------------------------------------------
 !  Smagorinsky-type scheme for parameterized turbulence:
@@ -3125,7 +3110,6 @@
       real, parameter :: prinv   = 1.0/prandtl
       real, parameter :: dmin    = 1.0e-10
 
-      stop 'ERROR: call to turbparam_vert not supported in OPENACC'
 
 !--------------------------------------------------------------
 !  Smagorinsky-type scheme for parameterized turbulence:
@@ -4927,7 +4911,6 @@
       real, dimension(kb:ke) :: wspa
       double precision, dimension(kb:ke) :: shravg
 
-    stop 'Subroutine t2psmm not ported to OPENACC'
     !-------------------------------------------
     doingt2p:  &
     if( t2pfac.ge.0.001 )then
