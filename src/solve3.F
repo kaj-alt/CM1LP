@@ -1038,7 +1038,7 @@
 	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
 	      if (testcase.eq.16) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1.74e-6
+                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_drpsub*1.74e-6
 	      end if
             enddo
             enddo

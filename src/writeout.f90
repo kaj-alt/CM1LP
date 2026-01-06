@@ -748,7 +748,6 @@
 
     if(output_coldpool.eq.1)then
           if(timestats.ge.1) time_write=time_write+mytime()
-         print *,'WARNING: calccpch not ported to GPU'
           call calccpch(zh,zf,th0,qv0,dum1(ib,jb,1),dum1(ib,jb,2),tha,qa)
     endif
 

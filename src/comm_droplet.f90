@@ -629,7 +629,6 @@ contains
         nparcelsLocal,nparcelsLocalActive,myid
       use constants, only: num_nn,inorth,isouth, &
                          iwest,ieast,inw,ine,isw,ise,undefined_index
-      use cutensorex
 
       integer, intent(inout) :: ptrDepart(num_nn)
       integer, intent(in) :: Depart(num_nn)
@@ -660,86 +659,48 @@ contains
       endif
 
 
-      if(Depart(inorth).gt.0) then
-         call GatherIndices(inorth,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(isouth).gt.0) then
-         call GatherIndices(isouth,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(iwest).gt.0) then
-         call GatherIndices(iwest,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(ieast).gt.0) then
-         call GatherIndices(ieast,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(inw).gt.0) then
-         call GatherIndices(inw,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(ine).gt.0) then
-         call GatherIndices(ine,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(isw).gt.0) then
-         call GatherIndices(isw,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
-      if(Depart(ise).gt.0) then
-         call GatherIndices(ise,ptrDepart,pdata_neighbor,Depart_ind)
-      endif
-
+      !$acc update host(pdata_neighbor)
+      n_idx  = ptrDepart(inorth)
+      s_idx  = ptrDepart(isouth)
+      e_idx  = ptrDepart(ieast)
+      w_idx  = ptrDepart(iwest)
+      nw_idx = ptrDepart(inw)
+      ne_idx = ptrDepart(ine)
+      sw_idx = ptrDepart(isw)
+      se_idx = ptrDepart(ise)
+      do np=1, nparcelsLocalActive
+        if(pdata_neighbor(np) .eq. inorth) then
+          Depart_ind(n_idx) = np
+          n_idx=n_idx+1
+        else if(pdata_neighbor(np) .eq. isouth) then
+          Depart_ind(s_idx) = np
+          s_idx=s_idx+1
+        else if(pdata_neighbor(np) .eq. iwest) then
+          Depart_ind(w_idx) = np
+          w_idx=w_idx+1
+        else if(pdata_neighbor(np) .eq. ieast) then
+          Depart_ind(e_idx) = np
+          e_idx=e_idx+1
+        else if(pdata_neighbor(np) .eq. inw) then
+          Depart_ind(nw_idx) = np
+          nw_idx=nw_idx+1
+        else if(pdata_neighbor(np) .eq. ine) then
+          Depart_ind(ne_idx) = np
+          ne_idx=ne_idx+1
+        else if(pdata_neighbor(np) .eq. isw) then
+          Depart_ind(sw_idx) = np
+          sw_idx=sw_idx+1
+        else if(pdata_neighbor(np) .eq. ise) then
+          Depart_ind(se_idx) = np
+          se_idx=se_idx+1
+        endif
+      enddo
+      !$acc update device(Depart_ind)
 
  110     format('myid: ',i4,' ',a10,' ',8(i8,1x))
 
      end subroutine setupDepartDroplet
 
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-     subroutine GatherIndices(dir,ptrDepart,pdata_neighbor,Depart_ind)
-
-        use constants, only : num_nn
-        use input, only : nparcelsLocal, nparcelsLocalActive
-        use cutensorex
-
-        integer, intent(in)                             :: dir
-        integer, intent(in), dimension(num_nn)          :: ptrDepart
-        integer, intent(in), dimension(nparcelsLocal)   :: pdata_neighbor
-        integer, intent(inout), dimension(:)            :: Depart_ind
-
-        ! local variables
-        integer :: np
-        integer :: ptrdir
-        integer, dimension(nparcelsLocal) :: Cidx
-
-        !$acc data create(Cidx) present(pdata_neighbor)
-
-        ptrdir = ptrDepart(dir)
-        Cidx = count_prefix(mask=(pdata_neighbor.eq.dir),exclusive=.true.)
-
-        !$acc parallel loop gang vector default(present)
-        do np=1,nparcelsLocalActive-1
-           if(Cidx(np) .ne. Cidx(np+1)) then
-             Depart_ind(ptrdir+Cidx(np))=np
-           endif
-        enddo
-        !$acc end parallel
-
-        ! special treament for the last value in the array
-        !$acc kernels default(present) 
-        if(pdata_neighbor(nparcelsLocalActive).eq.dir) then
-           Depart_ind(ptrdir+Cidx(nparcelsLocalActive)) = nparcelsLocalActive
-        endif
-        !$acc end kernels
-
-        !$acc end data
-
-      end subroutine GatherIndices
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

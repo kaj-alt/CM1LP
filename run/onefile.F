@@ -20,7 +20,7 @@ module_sf_mynn.F/
 module_bl_myjpbl.F/
 module_sf_myjsfc.F/
 
-cm1.F/          1767664250  44840 1000  100644  180163    `
+cm1.F/          1758659012  240272240272100644  179674    `
 #ifdef _CUDAMEM
 module cuda_rt
 
@@ -300,8 +300,6 @@ end module cuda_rt
 
       double precision :: adaptmovetim
       integer :: mvrec,nwritemv
-
-      integer :: ifields
 
 #ifdef MPI
       integer :: reqs,rc,ii,jj,id,itmp1,itmp2,jtmp1,jtmp2
@@ -2537,24 +2535,6 @@ end module cuda_rt
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
-      ifields = 0
-      IF (ifields.eq.1) THEN
-
-         rho = 0.0
-         prs = 0.0
-         ua = 0.0
-         va = 0.0
-         wa = 0.0
-         ppi = 0.0
-         tha = 0.0
-         qa = 0.0
-
-         call    read_fields(nstep,                                                &
-                              rho,prs,ua,va,wa,ppi,tha,qa,ppx,phi1,phi2,           &
-                              qname,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p)
-
-      END IF
-
       IF(irst.eq.1)THEN
 
         startup = .false.
@@ -4751,8 +4731,7 @@ end module cuda_rt
 
       end program cm1
 
-
-constants.F/    1767664250  44840 1000  100644  7153      `
+constants.F/    1758815619  240272240272100644  7153      `
   MODULE constants
 
   implicit none
@@ -4984,7 +4963,7 @@ constants.F/    1767664250  44840 1000  100644  7153      `
 
   END MODULE constants
 
-/0              1767664234  44840 1000  100644  11719     `
+/0              1758659012  240272240272100644  11719     `
 ! Fortran-95 implementation of the Mersenne Twister 19937, following
 !   the C implementation described below (code mt19937ar-cok.c, dated 2002/2/10),
 !   adapted cosmetically by making the names more general.
@@ -5287,7 +5266,7 @@ contains
   ! --------------------
 end module MersenneTwister_mod
 
-input.F/        1767664234  44840 1000  100644  24483     `
+input.F/        1758659012  240272240272100644  24483     `
   MODULE input
 
   use constants, only: i8
@@ -5671,7 +5650,7 @@ input.F/        1767664234  44840 1000  100644  24483     `
 
   END MODULE input
 
-adv.F/          1767664234  44840 1000  100644  134609    `
+adv.F/          1758659012  240272240272100644  134609    `
   MODULE adv_module
 
   implicit none
@@ -9484,7 +9463,7 @@ adv.F/          1767664234  44840 1000  100644  134609    `
 
   END MODULE adv_module
 
-adv_routines.F/ 1767664234  44840 1000  100644  296443    `
+adv_routines.F/ 1758659012  240272240272100644  296443    `
   MODULE adv_routines
 
   implicit none
@@ -19472,7 +19451,7 @@ adv_routines.F/ 1767664234  44840 1000  100644  296443    `
 
   END MODULE adv_routines
 
-anelp.F/        1767664234  44840 1000  100644  10258     `
+anelp.F/        1758659012  240272240272100644  10258     `
   MODULE anelp_module
 
   implicit none
@@ -19765,7 +19744,7 @@ anelp.F/        1767664234  44840 1000  100644  10258     `
       end subroutine anelp
 
   END MODULE anelp_module
-azimavg.F/      1767664234  44840 1000  100644  90085     `
+azimavg.F/      1758659012  240272240272100644  90085     `
   MODULE azimavg_module
 
   implicit none
@@ -22758,7 +22737,7 @@ azimavg.F/      1767664234  44840 1000  100644  90085     `
 
   END MODULE azimavg_module
 
-base.F/         1767664234  44840 1000  100644  101631    `
+base.F/         1758659012  240272240272100644  101631    `
   MODULE base_module
 
   implicit none
@@ -26160,7 +26139,7 @@ base.F/         1767664234  44840 1000  100644  101631    `
 
   END MODULE base_module
 
-bc.F/           1767664234  44840 1000  100644  86964     `
+bc.F/           1758659012  240272240272100644  86964     `
   MODULE bc_module
 
   implicit none
@@ -29136,7 +29115,7 @@ bc.F/           1767664234  44840 1000  100644  86964     `
 
 
   END MODULE bc_module
-cm1libs.F/      1767664234  44840 1000  100644  16315     `
+cm1libs.F/      1758659012  240272240272100644  16315     `
   MODULE cm1libs
 
   implicit none
@@ -29600,7 +29579,7 @@ cm1libs.F/      1767664234  44840 1000  100644  16315     `
 
   END MODULE cm1libs
 
-comm.F/         1767664234  44840 1000  100644  237306    `
+comm.F/         1758659012  240272240272100644  237306    `
   MODULE comm_module
 
   implicit none
@@ -38028,7 +38007,7 @@ comm.F/         1767664234  44840 1000  100644  237306    `
 
 
   END MODULE comm_module
-comm_droplet.F/ 1767664250  44840 1000  100644  39888     `
+comm_droplet.F/ 1758659012  240272240272100644  39888     `
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Jian Sun - 09/28/2022:                                         !
 !    This module is generated following John Dennis's suggestion !
@@ -39010,7 +38989,7 @@ contains
 #endif
 
 end module comm_droplet_module
-bcast.F/        1767664234  44840 1000  100644  4135      `
+bcast.F/        1758659012  240272240272100644  4135      `
 MODULE bcast_module
 
   implicit none
@@ -39178,7 +39157,7 @@ end interface bcast_double
 
 end MODULE bcast_module
 
-/23             1767664234  44840 1000  100644  15745     `
+/23             1758659012  240272240272100644  15745     `
   MODULE simple_phys_module
 
   implicit none
@@ -39648,7 +39627,7 @@ end MODULE bcast_module
 
   END MODULE simple_phys_module
 
-diff2.F/        1767664234  44840 1000  100644  34828     `
+diff2.F/        1758659012  240272240272100644  34828     `
   MODULE diff2_module
 
   implicit none
@@ -40873,7 +40852,7 @@ diff2.F/        1767664234  44840 1000  100644  34828     `
 
 
   END MODULE diff2_module
-eddy_recycle.F/ 1767664234  44840 1000  100644  14922     `
+eddy_recycle.F/ 1758659012  240272240272100644  14922     `
   module eddy_recycle
   implicit none
 
@@ -41306,7 +41285,7 @@ eddy_recycle.F/ 1767664234  44840 1000  100644  14922     `
 !-----------------------------------------------------------------------
 
   end module eddy_recycle
-goddard.F/      1767664234  44840 1000  100644  62672     `
+goddard.F/      1758659012  240272240272100644  62672     `
   MODULE goddard_module
 
   implicit none
@@ -42696,7 +42675,7 @@ goddard.F/      1767664234  44840 1000  100644  62672     `
       END subroutine consat2
 
   END MODULE goddard_module
-hifrq.F/        1767664234  44840 1000  100644  45122     `
+hifrq.F/        1758659012  240272240272100644  45122     `
   MODULE hifrq_module
 
   implicit none
@@ -44172,7 +44151,7 @@ hifrq.F/        1767664234  44840 1000  100644  45122     `
 
 
   END MODULE hifrq_module
-ib_module.F/    1767664234  44840 1000  100644  62966     `
+ib_module.F/    1758659012  240272240272100644  62966     `
   module ib_module
   implicit none
 
@@ -46101,7 +46080,7 @@ ib_module.F/    1767664234  44840 1000  100644  62966     `
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
   end module ib_module
-init3d.F/       1767664234  44840 1000  100644  85140     `
+init3d.F/       1758659012  240272240272100644  85140     `
   MODULE init3d_module
 
   use constants, only : i8, write_frac_droplet
@@ -48786,7 +48765,7 @@ init3d.F/       1767664234  44840 1000  100644  85140     `
 
 
   END MODULE init3d_module
-init_physics.F/ 1767664234  44840 1000  100644  9841      `
+init_physics.F/ 1758659012  240272240272100644  9841      `
   MODULE init_physics_module
 
   implicit none
@@ -49098,7 +49077,7 @@ init_physics.F/ 1767664234  44840 1000  100644  9841      `
 
   END MODULE init_physics_module
 
-init_surface.F/ 1767664234  44840 1000  100644  14370     `
+init_surface.F/ 1758659012  240272240272100644  14370     `
   MODULE init_surface_module
 
   implicit none
@@ -49579,7 +49558,7 @@ init_surface.F/ 1767664234  44840 1000  100644  14370     `
       end subroutine getlanduse
 
   END MODULE init_surface_module
-init_terrain.F/ 1767664234  44840 1000  100644  9930      `
+init_terrain.F/ 1758659012  240272240272100644  9930      `
   MODULE init_terrain_module
 
   implicit none
@@ -49886,7 +49865,7 @@ init_terrain.F/ 1767664234  44840 1000  100644  9930      `
 
 
   END MODULE init_terrain_module
-/47             1767664234  44840 1000  100644  35117     `
+/47             1758659012  240272240272100644  35117     `
   MODULE interp_routines
 
   implicit none
@@ -51136,7 +51115,7 @@ init_terrain.F/ 1767664234  44840 1000  100644  9930      `
 
   END MODULE interp_routines
 
-kessler.F/      1767664234  44840 1000  100644  30274     `
+kessler.F/      1758659012  240272240272100644  30274     `
   MODULE kessler_module
 
   implicit none
@@ -52171,7 +52150,7 @@ kessler.F/      1767664234  44840 1000  100644  30274     `
 
 
   END MODULE kessler_module
-lfoice.F/       1767664234  44840 1000  100644  70375     `
+lfoice.F/       1758659012  240272240272100644  70375     `
   MODULE lfoice_module
 
   implicit none
@@ -54230,7 +54209,7 @@ lfoice.F/       1767664234  44840 1000  100644  70375     `
 
   END MODULE lfoice_module
 
-lsnudge.F/      1767664234  44840 1000  100644  14759     `
+lsnudge.F/      1758659012  240272240272100644  14759     `
   MODULE lsnudge_module
 
   ! code for large-scale nudging 
@@ -54693,7 +54672,7 @@ lsnudge.F/      1767664234  44840 1000  100644  14759     `
 
   END MODULE lsnudge_module
 
-maxmin.F/       1767664234  44840 1000  100644  16089     `
+maxmin.F/       1758659012  240272240272100644  16089     `
   MODULE maxmin_module
 
       public :: maxmin2d
@@ -55273,7 +55252,7 @@ maxmin.F/       1767664234  44840 1000  100644  16089     `
 
   END MODULE maxmin_module
 
-misclibs.F/     1767664234  44840 1000  100644  139338    `
+misclibs.F/     1758659012  240272240272100644  139338    `
   MODULE misclibs
 
   implicit none
@@ -59873,7 +59852,7 @@ misclibs.F/     1767664234  44840 1000  100644  139338    `
 
 
   END MODULE misclibs
-morrison.F/     1767664234  44840 1000  100644  221110    `
+morrison.F/     1758659012  240272240272100644  221110    `
 !WRF:MODEL_LAYER:PHYSICS
 !
 ! Current version is tagged as V3.6
@@ -66312,7 +66291,7 @@ END SUBROUTINE MP_GRAUPEL
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 END MODULE module_mp_GRAUPEL
-/66             1767664234  44840 1000  100644  203558    `
+/66             1758659012  240272240272100644  203558    `
 module module_mp_jensen_ishmael
 
   !------------------------------------------------------------------------------------------------------!
@@ -71158,7 +71137,7 @@ end module module_mp_jensen_ishmael
 
   !.. Full stop
 
-/94             1767664234  44840 1000  100644  648574    `
+/94             1758659012  240272240272100644  648574    `
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
 
@@ -90258,7 +90237,7 @@ END SUBROUTINE nssl_2mom_driver
 
 
 END MODULE module_mp_nssl_2mom
-module_mp_p3.F/ 1767664234  44840 1000  100644  274164    `
+module_mp_p3.F/ 1758659012  240272240272100644  274164    `
 !__________________________________________________________________________________________
 ! This module contains the Predicted Particle Property (P3) bulk microphysics scheme.      !
 !                                                                                          !
@@ -96341,7 +96320,7 @@ SUBROUTINE access_lookup_table_coll(dumjj,dumii,dumj,dumi,index,dum1,dum3,      
 !===========================================================================================
 
  END MODULE MODULE_MP_P3
-mp_driver.F/    1767664234  44840 1000  100644  63127     `
+mp_driver.F/    1758659012  240272240272100644  63127     `
   MODULE mp_driver_module
 
              !------  Microphysics Driver ------!
@@ -97747,7 +97726,7 @@ mp_driver.F/    1767664234  44840 1000  100644  63127     `
 
   END MODULE mp_driver_module
 
-param.F/        1767664234  44840 1000  100644  298633    `
+param.F/        1758659012  240272240272100644  298633    `
   MODULE param_module
 
   implicit none
@@ -107298,7 +107277,7 @@ param.F/        1767664234  44840 1000  100644  298633    `
 
   END MODULE param_module
 
-parcel.F/       1767664234  44840 1000  100644  78298     `
+parcel.F/       1758659012  240272240272100644  78298     `
 #define TROUBLE 0
 #define PITER 1048576
 #ifdef _B4B
@@ -109796,7 +109775,7 @@ parcel.F/       1767664234  44840 1000  100644  78298     `
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
   END MODULE parcel_module
-droplet.F/      1767664234  44840 1000  100644  191384    `
+droplet.F/      1758659012  240272240272100644  191384    `
 #define _VERIFY 1
 #define _COUNTPREFIX 1
 #define TROUBLE 0
@@ -114640,7 +114619,7 @@ end subroutine quicksort
 
 
   END MODULE droplet_module
-pdef.F/         1767664234  44840 1000  100644  21404     `
+pdef.F/         1758659012  240272240272100644  21404     `
   MODULE pdef_module
 
   implicit none
@@ -115278,7 +115257,7 @@ pdef.F/         1767664234  44840 1000  100644  21404     `
 
 
   END MODULE pdef_module
-pdcomp.F/       1767664234  44840 1000  100644  13822     `
+pdcomp.F/       1758659012  240272240272100644  13822     `
   MODULE pdcomp_module
 
   implicit none
@@ -115708,7 +115687,7 @@ pdcomp.F/       1767664234  44840 1000  100644  13822     `
       end subroutine pidcomp
 
   END MODULE pdcomp_module
-poiss.F/        1767664234  44840 1000  100644  5803      `
+poiss.F/        1758659012  240272240272100644  5803      `
   MODULE poiss_module
 
   implicit none
@@ -115933,7 +115912,7 @@ poiss.F/        1767664234  44840 1000  100644  5803      `
 
   END MODULE poiss_module
 
-sfcphys.F/      1767664234  44840 1000  100644  38569     `
+sfcphys.F/      1758659012  240272240272100644  38569     `
   MODULE sfcphys_module
 
   implicit none
@@ -117138,7 +117117,7 @@ sfcphys.F/      1767664234  44840 1000  100644  38569     `
 
   END MODULE sfcphys_module
 
-singleton.F/    1767664234  44840 1000  100644  38594     `
+singleton.F/    1758659012  240272240272100644  38594     `
 MODULE singleton
   !-----------------------------------------------------------------------------
   ! Multivariate Fast Fourier Transform
@@ -118210,7 +118189,7 @@ CONTAINS
   END SUBROUTINE fftradix
 
 END MODULE singleton
-/117            1767664234  44840 1000  100644  45752     `
+/117            1758659012  240272240272100644  45752     `
   MODULE radiation_module
 
   implicit none
@@ -119303,7 +119282,7 @@ END MODULE singleton
 
 
   END MODULE radiation_module
-solve1.F/       1767664234  44840 1000  100644  74749     `
+solve1.F/       1758659012  240272240272100644  74749     `
   MODULE solve1_module
 
         ! solve1: pre-RK terms
@@ -121186,7 +121165,7 @@ solve1.F/       1767664234  44840 1000  100644  74749     `
 
   END MODULE solve1_module
 
-solve2.F/       1767664234  44840 1000  100644  85961     `
+solve2.F/       1758659012  240272240272100644  85961     `
   MODULE solve2_module
 
         ! solve2: RK loop and pressure solver
@@ -123405,7 +123384,7 @@ solve2.F/       1767664234  44840 1000  100644  85961     `
 
   END MODULE solve2_module
 
-solve3.F/       1767667521  44840 1000  100644  63666     `
+solve3.F/       1758893706  240272240272100644  63663     `
   MODULE solve3_module
 
         ! solve3: finish primary dynamical solver
@@ -124446,7 +124425,7 @@ solve3.F/       1767667521  44840 1000  100644  63666     `
 	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
 	      if (testcase.eq.16) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1.74e-6
+                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1e-6
 	      end if
             enddo
             enddo
@@ -124934,7 +124913,8 @@ print *,'Here 28 -- Not being executed'
 
 
   END MODULE solve3_module
-sounde.F/       1767664234  44840 1000  100644  36450     `
+
+sounde.F/       1758659012  240272240272100644  36450     `
   MODULE sounde_module
 
   implicit none
@@ -125986,7 +125966,7 @@ sounde.F/       1767664234  44840 1000  100644  36450     `
       end subroutine sounde
 
   END MODULE sounde_module
-sound.F/        1767664234  44840 1000  100644  31548     `
+sound.F/        1758659012  240272240272100644  31548     `
   MODULE sound_module
 
   implicit none
@@ -126881,7 +126861,7 @@ sound.F/        1767664234  44840 1000  100644  31548     `
       end subroutine sound
 
   END MODULE sound_module
-soundns.F/      1767664234  44840 1000  100644  11011     `
+soundns.F/      1758659012  240272240272100644  11011     `
   MODULE soundns_module
 
   implicit none
@@ -127232,7 +127212,7 @@ soundns.F/      1767664234  44840 1000  100644  11011     `
 
   END MODULE soundns_module
 
-soundcb.F/      1767664234  44840 1000  100644  20318     `
+soundcb.F/      1758659012  240272240272100644  20318     `
   MODULE soundcb_module
 
   implicit none
@@ -127863,7 +127843,7 @@ soundcb.F/      1767664234  44840 1000  100644  20318     `
       end subroutine soundcb
 
   END MODULE soundcb_module
-statpack.F/     1767664234  44840 1000  100644  49058     `
+statpack.F/     1758659012  240272240272100644  49058     `
   MODULE statpack_module
 
   implicit none
@@ -129411,7 +129391,7 @@ statpack.F/     1767664234  44840 1000  100644  49058     `
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
   END MODULE statpack_module
-stopcm1.F/      1767664234  44840 1000  100644  228       `
+stopcm1.F/      1758659012  240272240272100644  228       `
 
       subroutine stopcm1()
 #ifdef MPI
@@ -129429,7 +129409,7 @@ stopcm1.F/      1767664234  44840 1000  100644  228       `
 
       end subroutine stopcm1
 
-thompson.F/     1767664234  44840 1000  100644  216827    `
+thompson.F/     1758659012  240272240272100644  216827    `
 !+---+-----------------------------------------------------------------+
 !.. This subroutine computes the moisture tendencies of water vapor,
 !.. cloud droplets, rain, cloud ice (pristine), snow, and graupel.
@@ -135065,7 +135045,7 @@ END SUBROUTINE nl_get_write_thompson_tables
 END MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 
-/137            1767664234  44840 1000  100644  23668     `
+/137            1758659012  240272240272100644  23668     `
 !+---+-----------------------------------------------------------------+
 !..This set of routines facilitates computing radar reflectivity.
 !.. This module is more library code whereas the individual microphysics
@@ -135695,7 +135675,7 @@ CONTAINS
 !+---+-----------------------------------------------------------------+
 END MODULE module_mp_radar
 !+---+-----------------------------------------------------------------+
-turb.F/         1767664234  44840 1000  100644  248353    `
+turb.F/         1758659012  240272240272100644  248353    `
   MODULE turb_module
 
   implicit none
@@ -142372,7 +142352,7 @@ turb.F/         1767664234  44840 1000  100644  248353    `
 
   END MODULE turb_module
 
-turbtend.F/     1767664234  44840 1000  100644  107859    `
+turbtend.F/     1758659012  240272240272100644  107859    `
   MODULE turbtend_module
 
   implicit none
@@ -145494,7 +145474,7 @@ turbtend.F/     1767664234  44840 1000  100644  107859    `
 
   END MODULE turbtend_module
 
-turbnba.F/      1767664234  44840 1000  100644  33729     `
+turbnba.F/      1758659012  240272240272100644  33729     `
   MODULE turbnba_module
 
   implicit none
@@ -146349,7 +146329,7 @@ turbnba.F/      1767664234  44840 1000  100644  33729     `
 
   END MODULE turbnba_module
 
-domaindiag.F/   1767664234  44840 1000  100644  330337    `
+domaindiag.F/   1758659012  240272240272100644  330337    `
   MODULE domaindiag_module
 
   implicit none
@@ -157794,7 +157774,7 @@ domaindiag.F/   1767664234  44840 1000  100644  330337    `
 
   END MODULE domaindiag_module
 
-writeout.F/     1767664234  44840 1000  100644  346438    `
+writeout.F/     1758659012  240272240272100644  346438    `
   MODULE writeout_module
 
   implicit none
@@ -167563,13 +167543,13 @@ writeout.F/     1767664234  44840 1000  100644  346438    `
 
 
   END MODULE writeout_module
-restart.F/      1767664251  44840 1000  100644  272738    `
+restart.F/      1758659012  240272240272100644  255923    `
   MODULE restart_module
 
   implicit none
 
   private
-  public :: write_restart,read_restart,read_fields
+  public :: write_restart,read_restart
 
   CONTAINS
 
@@ -169281,7 +169261,7 @@ restart.F/      1767664251  44840 1000  100644  272738    `
           endif
         endif
 
-        if(myid.eq.0 .and. nparcelstot.gt.0)then
+        if(myid.eq.0)then
           if( restart_format.eq.1 )then
 #ifdef MPI
             write(50) rbuf(1:nparcelstot,1:npvars)
@@ -169307,9 +169287,6 @@ restart.F/      1767664251  44840 1000  100644  272738    `
           if( restart_format.eq.1 )then
             !$acc update host(nvar) if_present
             write(50) nvar
-            do i = 1, numprocs
-               write(50) nvar
-            end do
 #ifdef NETCDF
           elseif( restart_format.eq.2 )then
             call disp_err( nf90_inq_varid(ncid,"numparcels",varid) , .true. )
@@ -171665,361 +171642,6 @@ restart.F/      1767664251  44840 1000  100644  272738    `
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 
-      subroutine read_fields(nstep,                                                &
-                              rho,prs,ua,va,wa,ppi,tha,qa,ppx,phi1,phi2,           &
-                              qname,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p)
-      use input
-      use constants
-#ifdef MPI
-      use mpi
-#endif
-      use bcast_module
-#ifdef NETCDF
-      use netcdf
-      use writeout_nc_module, only : disp_err
-#endif
-      implicit none
-
-      !----------------------------------------------------------
-      ! This subroutine reads in 3D fields as an initial condition
-      !----------------------------------------------------------
-
-      integer, intent(inout) :: nstep
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: rho,prs
-      real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: ua
-      real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: va
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: wa
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: ppi,tha
-      real, intent(inout), dimension(ibm:iem,jbm:jem,kbm:kem,numq) :: qa
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: ppx
-      real, intent(inout), dimension(ibph:ieph,jbph:jeph,kbph:keph) :: phi1,phi2
-
-      real, dimension(ib:ie,jb:je,nrain) :: raintmp
-      real, dimension(ib:ie,jb:je) :: tmp
-
-      character(len=3), intent(in), dimension(maxq) :: qname
-      real, intent(inout), dimension(d3i,d3j) :: dat1
-      real, intent(inout), dimension(d2i,d2j) :: dat2
-      real, intent(inout), dimension(d3i,d3j,d3n) :: dat3
-      integer, intent(inout), dimension(d3t) :: reqt
-      integer, intent(in), dimension(numprocs) :: myi1p,myi2p,myj1p,myj2p
-
-      character(len=maxstring) fname
-      character(len=8) :: text1
-      character(len=6) :: aname
-      integer :: i,j,k,n,np,nvar,nread,reqs,orecs,orecu,orecv,orecw,ndum
-      integer :: ncid,time_index,old_format
-      real, dimension(:,:), allocatable :: rbuf, tmp_buf
-#ifdef MPI
-      integer :: proc,index,count,req1,req2,req3,reqp,tag
-      integer :: beg_loc,end_loc
-#endif
-#ifdef NETCDF
-      integer :: varid,ncstatus
-#endif
-
-!-----------------------------------------------------------------------
-
-  IF( restart_format.eq.1 )THEN
-    ! unformatted direct-access (grads) format:
-
-  IF( restart_filetype.eq.1 )THEN
-
-    !------------------
-    ! one restart file (per stagger type):
-    IF(myid.eq.nodemaster)THEN
-
-      do i=1,maxstring
-        fname(i:i) = ' '
-      enddo
-
-      fname = 'cm1rst_s.dat'
-      if(dowr) write(outfile,*) '  Reading 3D fields!'
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=51,file=fname,form='unformatted',access='direct',recl=4*nx*ny,status='old',err=779)
-      orecs = 1
-
-      fname = 'cm1rst_u.dat'
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=52,file=fname,form='unformatted',access='direct',recl=4*(nx+1)*ny,status='old',err=779)
-      orecu = 1
-
-      fname = 'cm1rst_v.dat'
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=53,file=fname,form='unformatted',access='direct',recl=4*nx*(ny+1),status='old',err=779)
-      orecv = 1
-
-      fname = 'cm1rst_w.dat'
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=54,file=fname,form='unformatted',access='direct',recl=4*nx*ny,status='old',err=779)
-      orecw = 1
-
-      if(dowr) write(outfile,*)
-    ENDIF
-
-  ELSEIF( restart_filetype.eq.2 )THEN
-
-    !------------------
-    ! one restart file (per restart time):
-    IF(myid.eq.nodemaster)THEN
-
-      do i=1,maxstring
-        fname(i:i) = ' '
-      enddo
-
-101   format(i6.6)
-
-      fname = 'cm1rst_XXXXXX_s.dat'
-      write(fname( 8:13),101) rstnum
-      if(dowr) write(outfile,*) '  Reading 3D fields!'
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=51,file=fname,form='unformatted',access='direct',recl=4*nx*ny,status='old',err=779)
-      orecs = 1
-
-      fname = 'cm1rst_XXXXXX_u.dat'
-      write(fname( 8:13),101) rstnum
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=52,file=fname,form='unformatted',access='direct',recl=4*(nx+1)*ny,status='old',err=779)
-      orecu = 1
-
-      fname = 'cm1rst_XXXXXX_v.dat'
-      write(fname( 8:13),101) rstnum
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=53,file=fname,form='unformatted',access='direct',recl=4*nx*(ny+1),status='old',err=779)
-      orecv = 1
-
-      fname = 'cm1rst_XXXXXX_w.dat'
-      write(fname( 8:13),101) rstnum
-      if(dowr) write(outfile,*) '  fname=',fname
-      open(unit=54,file=fname,form='unformatted',access='direct',recl=4*nx*ny,status='old',err=779)
-      orecw = 1
-
-      if(dowr) write(outfile,*)
-    ENDIF
-
-  ELSEIF( restart_filetype.eq.3 )THEN
-
-    !------------------
-    ! one restart file per node (cm1r17 format):
-    IF(myid.eq.nodemaster)THEN
-
-      do i=1,maxstring
-        fname(i:i) = ' '
-      enddo
-
-      fname = 'cm1rst_XXXXXX_YYYYYY.dat'
-
-      write(fname( 8:13),102) mynode
-      write(fname(15:20),102) rstnum
-102   format(i6.6)
-
-      if(dowr) write(outfile,*)
-      if(dowr) write(outfile,*) '  Reading 3D fields!'
-      if(dowr) write(outfile,*) '  fname=',fname
-      if(dowr) write(outfile,*)
-
-      open(unit=50,file=fname,form='unformatted',status='old')
-    ENDIF
-  ELSE
-    stop 12389
-  ENDIF
-
-#ifdef NETCDF
-  ELSEIF( restart_format.eq.2 )THEN
-    ! netcdf format:
-
-    if( myid.eq.0 )then
-
-      do i=1,maxstring
-        string(i:i) = ' '
-      enddo
-
-    IF(     restart_filetype.eq.1 )THEN
-      string = 'cm1rst.nc'
-      time_index = rstnum
-    ELSEIF( restart_filetype.eq.2 )THEN
-      string = 'cm1rst_XXXXXX.nc'
-      write(string(8:13),100) rstnum
-100   format(i6.6)
-      time_index = 1
-    ENDIF
-      if(myid.eq.0) print *,'  string = ',string
-
-      call disp_err( nf90_open( path=string , mode=nf90_nowrite , ncid=ncid ) , .true. )
-
-    endif
-
-#endif
-  ELSE
-
-    if( myid.eq.0 )then
-      print *
-      print *,'  unrecognized value for restart_format '
-      print *
-      print *,'      restart_format = ',restart_format
-      print *
-    endif
-#ifdef MPI
-    call MPI_BARRIER (MPI_COMM_WORLD,ierr)
-#endif
-    call stopcm1
-
-  ENDIF
-
-!---------------------------------------------------------------
-
-!---------------------------------------------------------------
-! standard 2D:
-
-      n = 1
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'rain    ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sws     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'svs     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sps     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'srs     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sgs     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sus     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'shs     ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-    if( nrain.eq.2 )then
-      n = 2
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'rain2   ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sws2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'svs2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sps2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'srs2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sgs2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'sus2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,1,nx,ny,raintmp(ib,jb,n),'shs2    ',         &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-    endif
-      call  readr(ni,nj,1,1,nx,ny,tmp(ib,jb),'tsk     ',           &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-
-
-
-! standard 3D:
-
-      call  readr(ni,nj,1,nk,nx,ny,rho(ib,jb,1),'rho     ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,nk,nx,ny,prs(ib,jb,1),'prs     ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni+1,nj,1,nk,nx+1,ny,ua(ib,jb,1),'ua      ',     &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecu,52,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2iu,d2ju,d3iu,d3ju)
-      call  readr(ni,nj+1,1,nk,nx,ny+1,va(ib,jb,1),'va      ',     &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecv,53,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2iv,d2jv,d3iv,d3jv)
-      call  readr(ni,nj,1,nk+1,nx,ny,wa(ib,jb,1),'wa      ',       &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecw,54,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,nk,nx,ny,ppi(ib,jb,1),'ppi     ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,nk,nx,ny,tha(ib,jb,1),'tha     ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,nk,nx,ny,ppx(ib,jb,1),'ppx     ',        &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-    if( psolver.eq.6 )then
-      call  readr(ni,nj,1,nk,nx,ny,phi1(ib,jb,1),'phi1    ',       &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-      call  readr(ni,nj,1,nk,nx,ny,phi2(ib,jb,1),'phi2    ',       &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-    endif
-    IF(imoist.eq.1)THEN
-    do n=1,numq
-      text1 = '        '
-      write(text1(1:3),156) qname(n)
-156   format(a3)
-      call  readr(ni,nj,1,nk,nx,ny,qa(ib,jb,1,n),text1     ,       &
-                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
-                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
-                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodemaster,nodes,d2is,d2js,d3is,d3js)
-    enddo
-    ENDIF
-
-
-!---------------------------------------------------------------
-
-
-      return
-
-779   print *,'  error opening fields file '
-      print *,'    ... stopping cm1 ... '
-      call stopcm1
-
-      end subroutine read_fields
-
-
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-
       subroutine writerbcwe(radbc,aname,ndum,dumy,ibndy,jb,je,kb,ke,ny,ni,nj,nk,nodex,nodey,restart_format,myid,k,numprocs,myj1p)
 #ifdef MPI
       use mpi
@@ -172990,7 +172612,8 @@ restart.F/      1767664251  44840 1000  100644  272738    `
 #endif
 
   END MODULE restart_module
-writeout_nc.F/  1767664234  44840 1000  100644  121950    `
+
+writeout_nc.F/  1758659012  240272240272100644  121950    `
   MODULE writeout_nc_module
 
   implicit none
@@ -175531,7 +175154,7 @@ writeout_nc.F/  1767664234  44840 1000  100644  121950    `
 #endif
 
   END MODULE writeout_nc_module
-radlib3d.F/     1767664234  44840 1000  100644  25513     `
+radlib3d.F/     1758659012  240272240272100644  25513     `
   MODULE radlib3d_module
 
   implicit none
@@ -176453,7 +176076,7 @@ END SUBROUTINE sagpol
 
   END MODULE radlib3d_module
 
-irrad3d.F/      1767664234  44840 1000  100644  251624    `
+irrad3d.F/      1758659012  240272240272100644  251624    `
   MODULE irrad3d_module
 
   implicit none
@@ -181340,7 +180963,7 @@ SUBROUTINE co2kdis(m,n,np,k,co2exp,tco2,tran)
 END SUBROUTINE co2kdis
 
   END MODULE irrad3d_module
-sorad3d.F/      1767664234  44840 1000  100644  83536     `
+sorad3d.F/      1758659012  240272240272100644  83536     `
   MODULE sorad3d_module
 
   implicit none
@@ -183806,7 +183429,7 @@ SUBROUTINE cldflx(m,n,np,ict,icb,cc,rr,tt,td,rs,ts,                     &
 END SUBROUTINE cldflx
 
   END MODULE sorad3d_module
-radtrns3d.F/    1767664234  44840 1000  100644  88223     `
+radtrns3d.F/    1758659012  240272240272100644  88223     `
   MODULE radtrns3d_module
 
   use radlib3d_module
@@ -186413,7 +186036,7 @@ END SUBROUTINE zenangl
 
   END MODULE radtrns3d_module
 
-getcape.F/      1767664234  44840 1000  100644  16994     `
+getcape.F/      1758659012  240272240272100644  16994     `
   MODULE getcape_module
 
   implicit none
@@ -187014,7 +186637,7 @@ getcape.F/      1767664234  44840 1000  100644  16994     `
 !-----------------------------------------------------------------------
 
   END MODULE getcape_module
-ysu.F/          1767664234  44840 1000  100644  73012     `
+ysu.F/          1758659012  240272240272100644  73012     `
 !WRF:model_layer:physics
 !
 !
@@ -188871,7 +188494,7 @@ contains
 
 end module module_bl_ysu
 !-------------------------------------------------------------------------------
-sfclay.F/       1767664234  44840 1000  100644  50587     `
+sfclay.F/       1758659012  240272240272100644  50587     `
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_sfclay
@@ -189834,7 +189457,7 @@ CONTAINS
 
 END MODULE module_sf_sfclay
 
-sfclayrev.F/    1767664234  44840 1000  100644  59154     `
+sfclayrev.F/    1758659012  240272240272100644  59154     `
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_sfclayrev
@@ -191159,7 +190782,7 @@ END MODULE module_sf_sfclayrev
 !
 
 
-slab.F/         1767664234  44840 1000  100644  28270     `
+slab.F/         1758659012  240272240272100644  28270     `
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_slab
@@ -191731,7 +191354,7 @@ CONTAINS
 !-------------------------------------------------------------------          
 
 END MODULE module_sf_slab
-oml.F/          1767664234  44840 1000  100644  12944     `
+oml.F/          1758659012  240272240272100644  12944     `
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_oml
@@ -192065,7 +191688,7 @@ CONTAINS
    END SUBROUTINE omlinit
 !-------------------------------------------------------------------          
 END MODULE module_sf_oml
-/156            1767664234  44840 1000  100644  567       `
+/156            1758659012  240272240272100644  567       `
       MODULE MODULE_GFS_MACHINE
 
       IMPLICIT NONE
@@ -192083,7 +191706,7 @@ END MODULE module_sf_oml
 
       END MODULE MODULE_GFS_MACHINE
 
-/178            1767664234  44840 1000  100644  2781      `
+/178            1758659012  240272240272100644  2781      `
 module module_gfs_physcons
   use module_gfs_machine,only:kind_phys
 !  Physical constants as set in NMC handbook from Smithsonian tables.
@@ -192125,7 +191748,7 @@ module module_gfs_physcons
   real(kind=kind_phys),parameter:: con_xponb   =-con_dldt/con_rv+con_hvap/(con_rv*con_ttp)
 end module module_gfs_physcons
 
-/201            1767664234  44840 1000  100644  112944    `
+/201            1758659012  240272240272100644  112944    `
 !-------------------------------------------------------------------------------
 module module_gfs_funcphys
 !$$$  Module Documentation Block
@@ -195105,7 +194728,7 @@ contains
   end subroutine
 !-------------------------------------------------------------------------------
 end module module_gfs_funcphys
-/224            1767664234  44840 1000  100644  23928     `
+/224            1758659012  240272240272100644  23928     `
 !  This MODULE holds the routines that calculate air-sea exchange coefficients 
 
 MODULE module_sf_exchcoef
@@ -195839,7 +195462,7 @@ CONTAINS
 
 END MODULE module_sf_exchcoef
 
-/246            1767664234  44840 1000  100644  80052     `
+/246            1758659012  240272240272100644  80052     `
 !-- XLV         latent heat of vaporization for water (J/kg)
 !
 MODULE module_sf_gfdl
@@ -197766,7 +197389,7 @@ CONTAINS
       END FUNCTION ran1
 
 END MODULE module_sf_gfdl
-/264            1767664234  44840 1000  100644  81651     `
+/264            1758659012  240272240272100644  81651     `
 !LWRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_bl_gfsedmf
@@ -200095,7 +199718,7 @@ CONTAINS
 !!!#endif
       END MODULE module_bl_gfsedmf
 
-module_ra_etc.F/1767664234  44840 1000  100644  49658     `
+module_ra_etc.F/1758659012  240272240272100644  49658     `
 
  !-------------------------------------------------------------------!
  !---  cm1r19:  misc stuff needed to adapt WRF RRTMG code to cm1  ---!
@@ -201567,7 +201190,7 @@ END MODULE module_ra_rrtmg_wrf
 
  !-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-!
 
-/285            1767664234  44840 1000  100644  650949    `
+/285            1758659012  240272240272100644  650949    `
 !MODULE module_ra_rrtmg_lw
 
       module parkind
@@ -216186,7 +215809,7 @@ IMPLICIT NONE
 
 END MODULE module_ra_rrtmg_lw
 
-/307            1767664234  44840 1000  100644  592399    `
+/307            1758659012  240272240272100644  592399    `
 !!MODULE module_ra_rrtmg_sw
                 
       module parrrsw
@@ -228696,7 +228319,7 @@ IMPLICIT NONE
 END MODULE module_ra_rrtmg_sw
 !***********************************************************************
 
-/329            1767664234  44840 1000  100644  243303    `
+/329            1758659012  240272240272100644  243303    `
 !WRF:MODEL_LAYER:PHYSICS
 !
 ! translated from NN f77 to F90 and put into WRF by Mariusz Pagowski
@@ -235239,7 +234862,7 @@ SUBROUTINE SCALE_AWARE(dx,PBL1,Psig_bl,Psig_shcu)
 
 END MODULE module_bl_mynn
 
-/347            1767664234  44840 1000  100644  85043     `
+/347            1758659012  240272240272100644  85043     `
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_mynn
@@ -237346,7 +236969,7 @@ END SUBROUTINE SFCLAY1D_mynn
 END MODULE module_sf_mynn
 
 
-/365            1767664234  44840 1000  100644  65206     `
+/365            1758659012  240272240272100644  65206     `
 !-----------------------------------------------------------------------
 !
       MODULE MODULE_BL_MYJPBL
@@ -239090,7 +238713,7 @@ END MODULE module_sf_mynn
       END MODULE MODULE_BL_MYJPBL
 !
 !-----------------------------------------------------------------------
-/385            1767664234  44840 1000  100644  47018     `
+/385            1758659012  240272240272100644  47018     `
 !----------------------------------------------------------------------
 !
       MODULE MODULE_SF_MYJSFC

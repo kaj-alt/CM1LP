@@ -502,7 +502,6 @@
             enddo
           ENDIF
           IF(efall.eq.1)THEN
-            stop 'subroutines getcvm and getefall not support on OpenACC' 
             ! dum1 = T
             ! dum2 = cvm
             ! dum4 = T tendency
