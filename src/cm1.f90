@@ -48,6 +48,7 @@
       use eddy_recycle
       use lsnudge_module
       use mpi
+      use openacc
       implicit none
 
       integer :: nstep,nstep0
@@ -248,11 +249,14 @@
       double precision :: adaptmovetim
       integer :: mvrec,nwritemv
 
+      integer :: ifields
+
       integer :: reqs,rc,ii,jj,id,itmp1,itmp2,jtmp1,jtmp2
       integer, dimension(MPI_STATUS_SIZE) :: status
       real :: mp_total,minval,temx,temy,temni,temnj
       double precision :: tstart,tend
       integer, dimension(:), allocatable :: isum,jsum
+      integer :: ndev,idev
 
       integer, dimension(:,:), allocatable :: pdata_locind  ! 2-D array to store parcel x/y/z location index
 
@@ -407,6 +411,14 @@
       call MPI_INIT( ierr )
       call MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
       call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, ierr )
+      ndev = acc_get_num_devices(acc_device_nvidia)
+      idev = mod(myid,ndev)
+      write(*,*) 'numprocs: ',numprocs
+      write(*,*) 'Total # of GPU: ',ndev 
+      write(*,*) 'Using GPU: ',idev 
+      call flush(6)
+      
+      call acc_set_device_num(idev,acc_device_nvidia)
 
 !----------------------------------------------------------------------
 
@@ -2415,6 +2427,24 @@
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
+      ifields = 0
+      IF (ifields.eq.1) THEN
+
+         rho = 0.0
+         prs = 0.0
+         ua = 0.0
+         va = 0.0
+         wa = 0.0
+         ppi = 0.0
+         tha = 0.0
+         qa = 0.0
+
+         call    read_fields(nstep,                                                &
+                              rho,prs,ua,va,wa,ppi,tha,qa,ppx,phi1,phi2,           &
+                              qname,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p)
+
+      END IF
+
       IF(irst.eq.1)THEN
 
         startup = .false.
@@ -3185,6 +3215,7 @@
       IF( do_adapt_move )THEN
 
         IF( mtime.ge.adaptmovetim )then
+          stop 'ERROR update_adapt_move not support under OPENACC'
           call   update_adapt_move(nstep,mtime,xh,yh,xfref,yfref,ug,vg,psmth,     &
                                    dum1,pp3d,u0,ua,u3d,v0,va,v3d,mvrec,nwritemv,  &
                                    icenter,jcenter,xcenter,ycenter)
@@ -3204,6 +3235,7 @@
 
       IF( radopt.ge.1 .and. dorad )THEN
 
+        stop 'ERROR radiation_driver not support under OPENACC'
         call     radiation_driver(mtime,radtim,dt,rbufsz,xh,yh,xf,yf,zf,rmh,c1,c2,     &
                    swten,lwten,swtenc,lwtenc,cldfra,o30,                               &
                    radsw,rnflx,radswnet,radlwin,dsr,olr,rad2d,                         &
@@ -3299,6 +3331,7 @@
 
       IF( (idiff.ge.1).and.(difforder.eq.2) )THEN
         !  get stress terms for explicit diffusion scheme:
+        stop 'ERROR: diff2def not supported on OPENACC version' 
         call diff2def(uh,arh1,arh2,uf,arf1,arf2,vh,vf,mh,c1,c2,mf,ust,zntmp,u1,v1,s1,  &
                       divx,rho,rr,rf,t11,t12,t13,t22,t23,t33,u3d,v3d,w3d,dissten)
       ENDIF
@@ -3692,6 +3725,7 @@
     IF( doazimavg )THEN
       if( doazimwrite )then
 
+        stop 'ERROR: azimavg not supported in OPENACC'
         call   azimavg(nstep,mtime,nwritea,arecs,arecw,qname,dt,dosfcflx,      &
                    icrs,icenter,jcenter,xcenter,ycenter,                       &
                    xh,rxh,arh1,arh2,uh,ruh,xf,rxf,arf1,arf2,uf,ruf,            &
@@ -3743,6 +3777,7 @@
     IF( dohifrq )THEN
       if( dohifrqwrite )then
 
+        stop 'ERROR: writeout_hifrq not supported in OPENACC'
         call   writeout_hifrq(                                                 &
                    nstep,mtime,nwriteh,qname,dt,dosfcflx,                      &
                    icrs,icenter,jcenter,xcenter,ycenter,                       &
@@ -3807,6 +3842,7 @@
             endif
           enddo
         endif
+        print *,'WARNING: OPENACC version of write_restart has not been verified'
         call     write_restart(nstep,srec,sirec,urec,vrec,wrec,nrec,mrec,prec,      &
                                trecs,trecw,arecs,arecw,                             &
                                nwrite,nwritet,nwritea,nwriteh,nrst,nstatout,        &

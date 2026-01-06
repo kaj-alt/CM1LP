@@ -2211,6 +2211,7 @@
 !------------------------------------------------------------------
 
         IF( do_ib )THEN
+          stop 'entering GPU resident compute region'
           call zero_out_uv(bndy,kbdy,ua ,va )
           call zero_out_w(bndy,kbdy,wa )
           if( cm1setup.eq.1 .and. iusetke ) call zero_out_w(bndy,kbdy,tkea )

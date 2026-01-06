@@ -997,7 +997,7 @@
 	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
 	      if (testcase.eq.16) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1e-6
+                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1.74e-6
 	      end if
             enddo
             enddo
@@ -1455,6 +1455,7 @@ print *,'Here 28 -- Not being executed'
 
       if(myid.eq.0) print *,'  Getting pressure diagnostics ... '
 
+      stop 'WARNING: execution of pidcomp not supported under OPENACC'
       call       pidcomp(dt,xh,rxh,arh1,arh2,uh,xf,rxf,arf1,arf2,uf,vh,vf,          &
                          gz,rgz,gzu,gzv,mh,rmh,mf,rmf,rds,rdsf,c1,c2,f2d,wprof,     &
                          pi0,th0,rth0,thv0,qv0,qc0,qi0,rho0,rr0,rf0,rrf0,u0,v0,     &

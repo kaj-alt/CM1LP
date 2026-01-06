@@ -1,0 +1,138 @@
+$DEBUG_L is []
+$USE_MPI_L is [true]
+$FC is [mpif90]
+$OPTS is [ -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor ]
+$CPP is [ cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding]
+$OMP is []
+$DM is [ -D_OPENACC -DMPI]
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS cm1.F > cm1.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS constants.F > constants.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c constants.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS input.F > input.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c input.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS param.F > param.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS init_terrain.F > init_terrain.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS bc.F > bc.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c bc.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS comm.F > comm.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c comm.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS adv_routines.F > adv_routines.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS pdef.F > pdef.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c pdef.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c adv_routines.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c init_terrain.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS bcast.F > bcast.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c bcast.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS thompson.F > thompson.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_mp_radar.F > module_mp_radar.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_ra_etc.F > module_ra_etc.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_ra_etc.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_mp_radar.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c thompson.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS morrison.F > morrison.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c morrison.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_mp_nssl_2mom.F > module_mp_nssl_2mom.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_mp_nssl_2mom.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS goddard.F > goddard.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS cm1libs.F > cm1libs.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c cm1libs.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c goddard.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS lfoice.F > lfoice.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c lfoice.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_mp_p3.F > module_mp_p3.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_mp_p3.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_mp_jensen_ishmael.F > module_mp_jensen_ishmael.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_mp_jensen_ishmael.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS ib_module.F > ib_module.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c ib_module.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS eddy_recycle.F > eddy_recycle.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c eddy_recycle.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS lsnudge.F > lsnudge.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c lsnudge.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c param.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS base.F > base.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS getcape.F > getcape.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c getcape.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS turb.F > turb.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS sfcphys.F > sfcphys.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c sfcphys.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS sfclay.F > sfclay.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c sfclay.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS sfclayrev.F > sfclayrev.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c sfclayrev.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS slab.F > slab.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c slab.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS oml.F > oml.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c oml.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS ysu.F > ysu.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c ysu.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_sf_gfdl.F > module_sf_gfdl.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_gfs_machine.F > module_gfs_machine.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_gfs_machine.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_gfs_physcons.F > module_gfs_physcons.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_gfs_physcons.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_gfs_funcphys.F > module_gfs_funcphys.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_gfs_funcphys.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_sf_exchcoef.F > module_sf_exchcoef.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_sf_exchcoef.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_sf_gfdl.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_bl_gfsedmf.F > module_bl_gfsedmf.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_bl_gfsedmf.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_sf_mynn.F > module_sf_mynn.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_bl_mynn.F > module_bl_mynn.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_bl_mynn.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_sf_mynn.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_bl_myjpbl.F > module_bl_myjpbl.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_bl_myjpbl.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS module_sf_myjsfc.F > module_sf_myjsfc.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c module_sf_myjsfc.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS turbnba.F > turbnba.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c turbnba.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS misclibs.F > misclibs.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c misclibs.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c turb.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c base.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS init3d.F > init3d.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS poiss.F > poiss.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS singleton.F > singleton.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c singleton.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c poiss.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS parcel.F > parcel.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS writeout_nc.F > writeout_nc.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c writeout_nc.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS comm_droplet.F > comm_droplet.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c comm_droplet.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c parcel.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS mersennetwister_mod.F > mersennetwister_mod.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c mersennetwister_mod.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS droplet.F > droplet.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c droplet.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c init3d.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS solve1.F > solve1.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS diff2.F > diff2.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c diff2.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS turbtend.F > turbtend.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c turbtend.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS testcase_simple_phys.F > testcase_simple_phys.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c testcase_simple_phys.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c solve1.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS solve2.F > solve2.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS adv.F > adv.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c adv.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS sound.F > sound.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c sound.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS sounde.F > sounde.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS maxmin.F > maxmin.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c maxmin.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c sounde.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS soundns.F > soundns.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c soundns.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS soundcb.F > soundcb.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c soundcb.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS anelp.F > anelp.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c anelp.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c solve2.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS solve3.F > solve3.f90
+cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding  -D_OPENACC -DMPI    -DNETCDF -DNCFPLUS pdcomp.F > pdcomp.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c pdcomp.f90
+mpif90  -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma -g -O2 -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor   -I/include -c solve3.f90
