@@ -179,6 +179,15 @@
 
       if(dowr) write(outfile,*) 'Inside PARAM'
 
+      ! defaults for testcase 16 humidity sink/controller (Pi chamber)
+      humidity_control = 0
+      humidity_target_rh = 100.0
+      humidity_sink = 1.74e-6
+      humidity_gain = 0.0
+      humidity_sink_min = 0.0
+      humidity_sink_max = 1.0e-3
+      humidity_control_elapse = 1.0
+
 #ifndef MPI
 !--------------------------------------------------------------
 
@@ -301,10 +310,17 @@
       call bcast_int(two_way_coupling) ! DEVICE
       call bcast_int(drop_evap) ! DEVICE
       call bcast_int(drop_traj) ! DEVICE
+      call bcast_int(humidity_control)
       call bcast_int(nparcelsMax)
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
+      call bcast_real(humidity_target_rh)
+      call bcast_real(humidity_sink)
+      call bcast_real(humidity_gain)
+      call bcast_real(humidity_sink_min)
+      call bcast_real(humidity_sink_max)
+      call bcast_real(humidity_control_elapse)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2696,6 +2712,14 @@
       if(dowr) write(outfile,*) 'nparcelsMax=',nparcelsMax
       if(dowr) write(outfile,*) 'two_way_coupling=',two_way_coupling
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
+      if(dowr) write(outfile,*) 'drop_traj=',drop_traj
+      if(dowr) write(outfile,*) 'humidity_control=',humidity_control
+      if(dowr) write(outfile,*) 'humidity_target_rh(%)=',humidity_target_rh
+      if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink
+      if(dowr) write(outfile,*) 'humidity_gain=',humidity_gain
+      if(dowr) write(outfile,*) 'humidity_sink_min=',humidity_sink_min
+      if(dowr) write(outfile,*) 'humidity_sink_max=',humidity_sink_max
+      if(dowr) write(outfile,*) 'humidity_control_elapse(s)=',humidity_control_elapse
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) 'kdiff2    =',kdiff2
       if(dowr) write(outfile,*) 'kdiff6    =',kdiff6

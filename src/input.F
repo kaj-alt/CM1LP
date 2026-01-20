@@ -123,7 +123,7 @@
               prcl_th,prcl_t,prcl_prs,prcl_ptra,prcl_q,prcl_nc,               &
               prcl_km,prcl_kh,prcl_tke,prcl_dbz,prcl_b,prcl_vpg,prcl_vort,    &
               prcl_rho,prcl_qsat,prcl_sfc,prcl_droplet,two_way_coupling,      &
-	      drop_evap,drop_traj,                                            &
+	      drop_evap,drop_traj,humidity_control,                           &
               n_out,s_out,u_out,v_out,w_out,z_out,sout2d,sout3d,              &
               stat_w,stat_wlevs,stat_u,stat_v,stat_rmw,                       &
               stat_pipert,stat_prspert,stat_thpert,stat_q,                    &
@@ -210,11 +210,13 @@
            adapt_move_frq,                                                    &
            base_pbot,base_ptop,base_thbot,base_thtop,base_qvbot,base_qvtop,   &
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
-           drop_inject_elapse,drop_inject_time
+           drop_inject_elapse,drop_inject_time,                               &
+           humidity_target_rh,humidity_sink,humidity_gain,                    &
+           humidity_sink_min,humidity_sink_max,humidity_control_elapse
 
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
-      !$acc                 minx,maxx,miny,maxy,maxz)
+      !$acc                 minx,maxx,miny,maxy,maxz,humidity_sink)
 
 !-----------------------------------------------------------------------
 
@@ -336,7 +338,10 @@
               prcl_rho,prcl_qsat,prcl_sfc,                                    &
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
-	      drop_evap,drop_traj
+	      drop_evap,drop_traj,                                            &
+              humidity_control,humidity_target_rh,humidity_sink,              &
+              humidity_gain,humidity_sink_min,humidity_sink_max,              &
+              humidity_control_elapse
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &
