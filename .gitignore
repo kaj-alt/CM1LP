@@ -1,0 +1,4 @@
+
+# CM1 output / NetCDF
+analysis/*.nc
+*.nc
