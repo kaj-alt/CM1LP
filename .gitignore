@@ -1,4 +1,6 @@
-
-# CM1 output / NetCDF
-analysis/*.nc
-*.nc
+**/*.nc
+**/*.o
+**/*.mod
+**/*.f90
+run/cm1.exe
+run/onefile.F
