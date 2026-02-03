@@ -173,6 +173,7 @@
       use maxmin_module
       use adv_routines, only : movesfc
       use misclibs
+      use cm1libs, only : rslf
       use parcel_module, only : parcel_driver
       use droplet_module, only : droplet_driver
       use pdcomp_module, only : pidcomp
@@ -1092,7 +1093,7 @@
                 meanRH = sumRH_global/max(1.0d0,count_global)
                 meanRH_pct = 100.0d0*meanRH
 
-                new_sink = dble(humidity_sink) + dble(humidity_gain)*(dble(humidity_target_rh)-meanRH_pct)
+                new_sink = dble(humidity_sink) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
                 new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
                 humidity_sink = sngl(new_sink)
                 !$acc update device(humidity_sink)

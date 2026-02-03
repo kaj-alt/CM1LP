@@ -927,7 +927,7 @@ contains
                                                          ! information over the domain
 
      ! Local variable
-     integer :: i,n,np,iv,tag,mpi_count
+     integer :: i,n,np,iv,tag
      integer :: beg_loc,end_loc
      integer(i8) :: tmp
      real, dimension(:,:), allocatable :: tmp_buf
@@ -944,8 +944,7 @@ contains
         do i = 2, numprocs
            allocate( tmp_buf(nparcels_per_mpi(i),npvals) )
            tag = 98765 + i - 1
-           mpi_count = int(nparcels_per_mpi(i)*npvals)
-           call mpi_recv(tmp_buf,mpi_count, &
+           call mpi_recv(tmp_buf,nparcels_per_mpi(i)*npvals, &
                          MPI_REAL,i-1,tag,MPI_COMM_WORLD, &
                          MPI_STATUS_IGNORE,ierr)
            tmp = tmp + nparcels_per_mpi(i-1)
@@ -970,8 +969,7 @@ contains
               tmp_buf(np,iv) = pdata(np,iv)
            end do
         end do
-        mpi_count = int(nparcelsLocalActive*npvals)
-        call mpi_send(tmp_buf,mpi_count, &
+        call mpi_send(tmp_buf,nparcelsLocalActive*npvals, &
                       MPI_REAL,0,tag,MPI_COMM_WORLD,ierr)
         deallocate(tmp_buf)
      end if
