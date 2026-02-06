@@ -162,7 +162,9 @@
           kd_turb,ud_rdamp,vd_rdamp,wd_rdamp,td_rdamp,td_hediff,td_vediff,qd_hediff,qd_vediff, &
           td_diss,td_rad,td_pbl,td_hturb,td_vturb,qd_hturb,qd_vturb,ud_pbl,vd_pbl,qd_pbl, &
           td_nudge,qd_nudge,prcl_droplet,ntwk,pdcomp,nbc,ebc,sbc,wbc,two_way_coupling, &
-          output_rain,output_sws,output_svs,output_sps,output_srs,output_sgs,output_sus,output_shs
+          output_rain,output_sws,output_svs,output_sps,output_srs,output_sgs,output_sus,output_shs, &
+          humidity_control,humidity_target_rh,humidity_sink,humidity_gain,humidity_sink_min, &
+          humidity_sink_max,humidity_control_elapse
 
       use constants
       use bc_module, only: bc2d, bcs, bcu, bcv, bcw, bcwsfc, &
@@ -171,6 +173,7 @@
       use maxmin_module
       use adv_routines, only : movesfc
       use misclibs
+      use cm1libs, only : rslf
       use parcel_module, only : parcel_driver
       use droplet_module, only : droplet_driver
       use pdcomp_module, only : pidcomp
@@ -353,6 +356,12 @@
       integer :: num_dropsub,i_dropsub
       real :: dt_dropsub
       double precision :: dbldt_dropsub,mtime_dropsub
+
+      double precision, save :: humidity_last_update = -1.0d0
+      double precision :: sumRH_local,sumRH_global,count_local,count_global
+      double precision :: meanRH,meanRH_pct,new_sink
+      real :: qvs_rh,t_rh,rh_cell
+      logical :: humctrl_due
 
 !--------------------------------------------------------------------
       !$acc declare present(rrw)
@@ -1023,6 +1032,12 @@
             enddo
           endif
           IF( two_way_coupling.eq.1 )THEN
+            if (testcase.eq.16) then
+#ifdef _OPENACC
+              !$acc update device(humidity_sink)
+#endif
+              continue
+            endif
             !$omp parallel do default(shared) private(i,j,k)
             !$acc parallel loop gang vector collapse(3) default(present) private(i,j,k)
             do k=1,nk
@@ -1038,11 +1053,57 @@
 	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
 	      if (testcase.eq.16) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*1.74e-6
+                 q3d(i,j,k,nqv)=max(0.0,q3d(i,j,k,nqv)-dt_dropsub*humidity_sink)
 	      end if
             enddo
             enddo
             enddo
+
+            if (humidity_control.eq.1 .and. testcase.eq.16 .and. imoist.eq.1) then
+              humctrl_due = .false.
+              if (humidity_control_elapse.le.0.0) then
+                humctrl_due = .true.
+              elseif (humidity_last_update.lt.0.0d0) then
+                humctrl_due = .true.
+              elseif ( (mtime_dropsub-humidity_last_update) .ge. dble(humidity_control_elapse) ) then
+                humctrl_due = .true.
+              endif
+
+              if (humctrl_due) then
+                sumRH_local = 0.0d0
+                count_local = dble(ni)*dble(nj)*dble(nk)
+                !$acc parallel loop gang vector collapse(3) default(present) private(i,j,k,qvs_rh,t_rh,rh_cell) reduction(+:sumRH_local)
+                do k=1,nk
+                do j=1,nj
+                do i=1,ni
+                  t_rh = (th0(i,j,k)+th3d(i,j,k))*(pi0(i,j,k)+ppi(i,j,k))
+                  qvs_rh = rslf( prs(i,j,k) , t_rh )
+                  rh_cell = q3d(i,j,k,nqv)*(1.0+qvs_rh*reps) / (max(1.0e-12,qvs_rh)*(1.0+q3d(i,j,k,nqv)*reps))
+                  sumRH_local = sumRH_local + dble(rh_cell)
+                enddo
+                enddo
+                enddo
+
+                sumRH_global = sumRH_local
+                count_global = count_local
+#ifdef MPI
+                call mpi_allreduce(sumRH_local,sumRH_global,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+                call mpi_allreduce(count_local,count_global,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+#endif
+                meanRH = sumRH_global/max(1.0d0,count_global)
+                meanRH_pct = 100.0d0*meanRH
+
+                new_sink = dble(humidity_sink) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
+                new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
+                humidity_sink = sngl(new_sink)
+                !$acc update device(humidity_sink)
+                humidity_last_update = mtime_dropsub
+
+                if (myid.eq.0) then
+                  write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' sink=',humidity_sink
+                endif
+              endif
+            endif
 
 
             if(timestats.ge.1) time_parcels=time_parcels+mytime()

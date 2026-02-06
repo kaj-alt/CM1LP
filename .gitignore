@@ -1,0 +1,6 @@
+**/*.nc
+**/*.o
+**/*.mod
+**/*.f90
+run/cm1.exe
+run/onefile.F
