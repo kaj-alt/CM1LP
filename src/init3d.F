@@ -79,7 +79,7 @@
       use input
       use constants
       use misclibs
-      use cm1libs , only : rslf,rsif
+      use cm1libs , only : rslf,rsif,deslf
       use bc_module, only: bcu, bcv, bcw, bcs
       use module_mp_nssl_2mom, only: ccn, lccn
       use poiss_module
