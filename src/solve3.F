@@ -163,8 +163,10 @@
           td_diss,td_rad,td_pbl,td_hturb,td_vturb,qd_hturb,qd_vturb,ud_pbl,vd_pbl,qd_pbl, &
           td_nudge,qd_nudge,prcl_droplet,ntwk,pdcomp,nbc,ebc,sbc,wbc,two_way_coupling, &
           output_rain,output_sws,output_svs,output_sps,output_srs,output_sgs,output_sus,output_shs, &
-          humidity_control,humidity_target_rh,humidity_sink,humidity_gain,humidity_sink_min, &
-          humidity_sink_max,humidity_control_elapse
+          humidity_control,humidity_mode,humidity_target_rh,humidity_sink,humidity_gain, &
+          humidity_sink_min, &
+          humidity_sink_max,humidity_control_elapse,humidity_wall_mult,humidity_wall_mult_min, &
+          humidity_wall_mult_max
 
       use constants
       use bc_module, only: bc2d, bcs, bcu, bcv, bcw, bcwsfc, &
@@ -359,7 +361,7 @@
 
       double precision, save :: humidity_last_update = -1.0d0
       double precision :: sumRH_local,sumRH_global,count_local,count_global
-      double precision :: meanRH,meanRH_pct,new_sink
+      double precision :: meanRH,meanRH_pct,new_sink,new_mult
       real :: qvs_rh,t_rh,rh_cell
       logical :: humctrl_due
 
@@ -1049,9 +1051,8 @@
               v3d(i,j,k)=v3d(i,j,k)+dt_dropsub*dpten(i,j,k,4)
               w3d(i,j,k)=w3d(i,j,k)+dt_dropsub*dpten(i,j,k,5)
           
-	      !For Pi chamber DNS with periodic sidewalls, need a vapor sink
-	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
-	      if (testcase.eq.16) then
+	      ! Mode 1: Pi-chamber periodic forcing via a domain-wide vapor sink.
+	      if (testcase.eq.16 .and. humidity_mode.eq.1) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
                  q3d(i,j,k,nqv)=max(0.0,q3d(i,j,k,nqv)-dt_dropsub*humidity_sink)
 	      end if
@@ -1059,7 +1060,11 @@
             enddo
             enddo
 
-            if (humidity_control.eq.1 .and. testcase.eq.16 .and. imoist.eq.1) then
+            if(timestats.ge.1) time_parcels=time_parcels+mytime()
+            call bcs(th3d)
+            call bcs(q3d(ib,jb,kb,nqv))
+            if (humidity_control.eq.1 .and. testcase.eq.16 .and. imoist.eq.1 .and. &
+                (humidity_mode.eq.1 .or. humidity_mode.eq.2)) then
               humctrl_due = .false.
               if (humidity_control_elapse.le.0.0) then
                 humctrl_due = .true.
@@ -1093,22 +1098,29 @@
                 meanRH = sumRH_global/max(1.0d0,count_global)
                 meanRH_pct = 100.0d0*meanRH
 
-                new_sink = dble(humidity_sink) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
-                new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
-                humidity_sink = sngl(new_sink)
-                !$acc update device(humidity_sink)
+                if (humidity_mode.eq.1) then
+                  new_sink = dble(humidity_sink) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
+                  new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
+                  humidity_sink = sngl(new_sink)
+                  !$acc update device(humidity_sink)
+                elseif (humidity_mode.eq.2) then
+                  new_mult = dble(humidity_wall_mult) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
+                  new_mult = min(dble(humidity_wall_mult_max),max(dble(humidity_wall_mult_min),new_mult))
+                  humidity_wall_mult = sngl(new_mult)
+                  !$acc update device(humidity_wall_mult)
+                endif
                 humidity_last_update = mtime_dropsub
 
                 if (myid.eq.0) then
-                  write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' sink=',humidity_sink
+                  if (humidity_mode.eq.1) then
+                    write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' sink=',humidity_sink
+                  elseif (humidity_mode.eq.2) then
+                    write(*,'(a,f12.4,a,f10.4,a,f10.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' wall_mult=',humidity_wall_mult
+                  endif
                 endif
               endif
             endif
 
-
-            if(timestats.ge.1) time_parcels=time_parcels+mytime()
-            call bcs(th3d)
-            call bcs(q3d(ib,jb,kb,nqv))
             call bcu(u3d)
             call bcv(v3d)
             call bcw(w3d,1)

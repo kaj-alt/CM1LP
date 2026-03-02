@@ -123,7 +123,7 @@
               prcl_th,prcl_t,prcl_prs,prcl_ptra,prcl_q,prcl_nc,               &
               prcl_km,prcl_kh,prcl_tke,prcl_dbz,prcl_b,prcl_vpg,prcl_vort,    &
               prcl_rho,prcl_qsat,prcl_sfc,prcl_droplet,two_way_coupling,      &
-	      drop_evap,drop_traj,humidity_control,                           &
+	      drop_evap,drop_traj,humidity_control,humidity_mode,             &
               custom_solute_init,match_kohler_to_nacl,                         &
               n_out,s_out,u_out,v_out,w_out,z_out,sout2d,sout3d,              &
               stat_w,stat_wlevs,stat_u,stat_v,stat_rmw,                       &
@@ -214,6 +214,7 @@
            drop_inject_elapse,drop_inject_time,                               &
            humidity_target_rh,humidity_sink,humidity_gain,                    &
            humidity_sink_min,humidity_sink_max,humidity_control_elapse,       &
+           humidity_wall_mult,humidity_wall_mult_min,humidity_wall_mult_max,  &
            solute_dry_diam_nm,nacl_match_dry_diam_nm,                         &
            init_hydration_rh_frac,solute_rho_dry,nacl_rho_dry,                &
            solute_os_user,nacl_os_ref
@@ -343,9 +344,11 @@
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,                                            &
-              humidity_control,humidity_target_rh,humidity_sink,              &
+              humidity_control,humidity_mode,                                  &
+              humidity_target_rh,humidity_sink,                               &
               humidity_gain,humidity_sink_min,humidity_sink_max,              &
               humidity_control_elapse,                                         &
+              humidity_wall_mult,humidity_wall_mult_min,humidity_wall_mult_max,&
               custom_solute_init,match_kohler_to_nacl,                        &
               solute_dry_diam_nm,nacl_match_dry_diam_nm,                      &
               init_hydration_rh_frac,solute_rho_dry,nacl_rho_dry,             &

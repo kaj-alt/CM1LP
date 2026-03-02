@@ -181,12 +181,16 @@
 
       ! defaults for testcase 16 humidity sink/controller (Pi chamber)
       humidity_control = 0
+      humidity_mode = 1
       humidity_target_rh = 100.0
       humidity_sink = 1.74e-6
       humidity_gain = 0.0
       humidity_sink_min = 0.0
       humidity_sink_max = 1.0e-3
       humidity_control_elapse = 1.0
+      humidity_wall_mult = 1.0
+      humidity_wall_mult_min = 0.0
+      humidity_wall_mult_max = 2.0
 
       ! defaults for solute initialization and Kohler matching
       custom_solute_init = 0
@@ -322,6 +326,7 @@
       call bcast_int(drop_evap) ! DEVICE
       call bcast_int(drop_traj) ! DEVICE
       call bcast_int(humidity_control)
+      call bcast_int(humidity_mode)
       call bcast_int(custom_solute_init)
       call bcast_int(match_kohler_to_nacl)
       call bcast_int(nparcelsMax)
@@ -334,6 +339,9 @@
       call bcast_real(humidity_sink_min)
       call bcast_real(humidity_sink_max)
       call bcast_real(humidity_control_elapse)
+      call bcast_real(humidity_wall_mult)
+      call bcast_real(humidity_wall_mult_min)
+      call bcast_real(humidity_wall_mult_max)
       call bcast_real(solute_dry_diam_nm)
       call bcast_real(nacl_match_dry_diam_nm)
       call bcast_real(init_hydration_rh_frac)
@@ -2751,12 +2759,16 @@
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
       if(dowr) write(outfile,*) 'drop_traj=',drop_traj
       if(dowr) write(outfile,*) 'humidity_control=',humidity_control
+      if(dowr) write(outfile,*) 'humidity_mode=',humidity_mode
       if(dowr) write(outfile,*) 'humidity_target_rh(%)=',humidity_target_rh
       if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink
       if(dowr) write(outfile,*) 'humidity_gain=',humidity_gain
       if(dowr) write(outfile,*) 'humidity_sink_min=',humidity_sink_min
       if(dowr) write(outfile,*) 'humidity_sink_max=',humidity_sink_max
       if(dowr) write(outfile,*) 'humidity_control_elapse(s)=',humidity_control_elapse
+      if(dowr) write(outfile,*) 'humidity_wall_mult=',humidity_wall_mult
+      if(dowr) write(outfile,*) 'humidity_wall_mult_min=',humidity_wall_mult_min
+      if(dowr) write(outfile,*) 'humidity_wall_mult_max=',humidity_wall_mult_max
       if(dowr) write(outfile,*) 'custom_solute_init=',custom_solute_init
       if(dowr) write(outfile,*) 'match_kohler_to_nacl=',match_kohler_to_nacl
       if(dowr) write(outfile,*) 'solute_dry_diam_nm=',solute_dry_diam_nm
