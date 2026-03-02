@@ -11,7 +11,7 @@
 
   private
   public :: droplet_driver,droplet_diag,initialize_droplet_histograms, &
-            check_droplet_ownership,particle_seed,ngidx
+            check_droplet_ownership,particle_seed,ngidx,rad_solver2
 
   !These are quantities which are needed in the droplet_diag output, so must be public
   real :: num100,num1000
@@ -3825,8 +3825,10 @@
                         prx,pry,prz,pru,prv,prw,prvpx,prvpy,prvpz,prrp,prrp0,prtp,prms,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive,numprocs,nparcelsMax, &
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
-                        drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz
+                        drop_mult,tsk0,pi_sp,pi_dp,myid,nx,ny,nz,dx,dy,dz, &
+                        custom_solute_init,solute_dry_diam_nm,init_hydration_rh_frac,solute_rho_dry
       use constants
+      use cm1libs , only : deslf
       use MersenneTwister_mod
 #ifdef MPI
       use mpi
@@ -3844,17 +3846,20 @@
       integer :: sum_buf(2)
 
       double precision :: rad_init  !Initial radius
+      double precision :: rad_base,rdry,rad_guess,esa_dp,rh_frac
       double precision :: rand
       type(randomNumberSequence) :: randomNumbers
 
       real :: xrange,yrange,zrange
       real :: salinity
+      real :: qval_init,m_s_dry
       real :: my_reintro_tmp  !A temporaray variable to store a real version of my_reintro
       
       integer :: iter,nbin,num_create,j,ierr
 
       integer :: local_seed
       integer :: values(8)
+      integer :: mflag
 
 
       my_reintro_tmp = 0.01*(1./60.)*(10.**6.)*time_since_inject*4 !total for a 4m^3 vol chamber
@@ -3874,6 +3879,21 @@
       xrange = xf(ni+1)-xf(1)
       yrange = yf(nj+1)-yf(1)
       zrange = nz*dz/2.0
+
+      rad_base = 0.0d0
+      m_s_dry = 0.0
+      if (custom_solute_init.eq.1) then
+         rdry = max(1.0d-10,0.5d0*dble(solute_dry_diam_nm)*1.0d-9)
+         rad_base = rdry
+         m_s_dry = real(dble(solute_rho_dry)*(4.0d0/3.0d0)*pi_dp*rdry**3)
+         if (dble(init_hydration_rh_frac).ge.0.0d0) then
+            rh_frac = min(1.0d0,max(0.0d0,dble(init_hydration_rh_frac)))
+            esa_dp = deslf(101325.0d0,290.0d0)
+            qval_init = real(rh_frac*(mw/(ru*290.0d0))*esa_dp)
+            call rad_solver2(rad_guess,mflag,101325.0,1.0,290.0,qval_init,290.0,m_s_dry,real(rdry),0)
+            rad_base = max(rdry,rad_guess)
+         end if
+      end if
 
       !Update the cumulative injection statistics
       num_injected = num_injected + real(my_reintro)*drop_mult
@@ -3915,7 +3935,11 @@
                !local_seed = floor(29.*mtime) + (97*myid) + (7*j)
                call new_RandomNumberSequence(randomNumbers, j*particle_seed)
 
-               rad_init = 2.0e-7
+               if (custom_solute_init.eq.1) then
+                  rad_init = rad_base
+               else
+                  rad_init = 2.0e-7
+               end if
 
                !Random location
                rand = getRandomReal(randomNumbers)
@@ -3924,7 +3948,11 @@
                pdata(np,pry) = yf(1)+rand*yrange
                pdata(np,prz) = zrange
             else
-               rad_init = 1.0e-6
+               if (custom_solute_init.eq.1) then
+                  rad_init = rad_base
+               else
+                  rad_init = 1.0e-6
+               end if
                pdata(np,prx) = xf(1) + xrange/2.0
                pdata(np,pry) = yf(1) + yrange/2.0
                pdata(np,prz) = zrange
@@ -3934,8 +3962,12 @@
             pdata(np,prvpz) = 0.0   !Specified in namelist file
             pdata(np,prrp) = rad_init
             pdata(np,prrp0) = rad_init
-            salinity = 0.066
-            pdata(np,prms) = salinity*rhow*4.0/3.0*pi*pdata(np,prrp)**3
+            if (custom_solute_init.eq.1) then
+               pdata(np,prms) = m_s_dry
+            else
+               salinity = 0.066
+               pdata(np,prms) = salinity*rhow*4.0/3.0*pi*pdata(np,prrp)**3
+            end if
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0

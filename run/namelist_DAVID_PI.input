@@ -351,7 +351,16 @@
  drop_inject_time = 20.0,
  two_way_coupling = 1,
  drop_evap = 1,
- drop_traj = 0
+drop_traj = 0,
+custom_solute_init = 0,
+match_kohler_to_nacl = 0,
+solute_dry_diam_nm = 200.0,
+nacl_match_dry_diam_nm = 70.0,
+init_hydration_rh_frac = -1.0,
+solute_rho_dry = 2160.0,
+nacl_rho_dry = 2160.0,
+solute_os_user = 1.0,
+nacl_os_ref = 1.0
  /
 
  &param14

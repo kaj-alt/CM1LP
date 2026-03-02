@@ -84,7 +84,7 @@
       use module_mp_nssl_2mom, only: ccn, lccn
       use poiss_module
       use parcel_module , only : getparcelzs
-      use droplet_module, only: initialize_droplet_histograms,particle_seed,ngidx
+      use droplet_module, only: initialize_droplet_histograms,particle_seed,ngidx,rad_solver2
 #ifdef MPI
       use mpi
 #endif
@@ -170,8 +170,10 @@
       double precision :: tem1,tem2,temd
       logical :: doit
 
-      real :: salinity
+      real :: salinity,qval_init,m_s_dry_init
+      double precision :: rdry_init,rad_init_pre,rad_guess,esa_dp,rh_frac
       integer :: values(8)
+      integer :: mflag
 
       ! Note:  By default, CM1 uses the same set of psuedorandom numbers 
       !        every time it is called.  To use truly random perturbations 
@@ -434,6 +436,20 @@
         xrange = xf(ni+1) - xf(1)
         yrange = yf(nj+1) - yf(1)
 	zrange = maxz
+        rad_init_pre = 2.0d-6
+        m_s_dry_init = 0.0
+        if (custom_solute_init.eq.1) then
+          rdry_init = max(1.0d-10,0.5d0*dble(solute_dry_diam_nm)*1.0d-9)
+          m_s_dry_init = real(dble(solute_rho_dry)*(4.0d0/3.0d0)*pi_dp*rdry_init**3)
+          rad_init_pre = rdry_init
+          if (dble(init_hydration_rh_frac).ge.0.0d0) then
+            rh_frac = min(1.0d0,max(0.0d0,dble(init_hydration_rh_frac)))
+            esa_dp = deslf(101325.0d0,290.0d0)
+            qval_init = real(rh_frac*(mw/(ru*290.0d0))*esa_dp)
+            call rad_solver2(rad_guess,mflag,101325.0,1.0,290.0,qval_init,290.0,m_s_dry_init,real(rdry_init),0)
+            rad_init_pre = max(rdry_init,rad_guess)
+          end if
+        end if
 
         iter = floor(real(nparcelsInit) / real(numprocs))
         if ( mod(real(nparcelsInit),real(numprocs)) /= 0 ) then
@@ -462,12 +478,21 @@
              pdata(i,prvpz) = 0.0
      
              !Droplet size (radius)
-             pdata(i,prrp) = 2.0e-6
-             pdata(i,prrp0) = 2.0e-6
+             if (custom_solute_init.eq.1) then
+               pdata(i,prrp) = real(rad_init_pre)
+               pdata(i,prrp0) = real(rad_init_pre)
+             else
+               pdata(i,prrp) = 2.0e-6
+               pdata(i,prrp0) = 2.0e-6
+             end if
      
              !Droplet solute mass
-             salinity = 0.066
-             pdata(i,prms) = salinity*rhow*4.0/3.0*pi*pdata(i,prrp)**3
+             if (custom_solute_init.eq.1) then
+               pdata(i,prms) = m_s_dry_init
+             else
+               salinity = 0.066
+               pdata(i,prms) = salinity*rhow*4.0/3.0*pi*pdata(i,prrp)**3
+             end if
      
              !Droplet temperature
              pdata(i,prtp) = 290.0

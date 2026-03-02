@@ -188,6 +188,17 @@
       humidity_sink_max = 1.0e-3
       humidity_control_elapse = 1.0
 
+      ! defaults for solute initialization and Kohler matching
+      custom_solute_init = 0
+      match_kohler_to_nacl = 0
+      solute_dry_diam_nm = 200.0
+      nacl_match_dry_diam_nm = 70.0
+      init_hydration_rh_frac = -1.0
+      solute_rho_dry = 2160.0
+      nacl_rho_dry = 2160.0
+      solute_os_user = 1.0
+      nacl_os_ref = 1.0
+
 #ifndef MPI
 !--------------------------------------------------------------
 
@@ -311,6 +322,8 @@
       call bcast_int(drop_evap) ! DEVICE
       call bcast_int(drop_traj) ! DEVICE
       call bcast_int(humidity_control)
+      call bcast_int(custom_solute_init)
+      call bcast_int(match_kohler_to_nacl)
       call bcast_int(nparcelsMax)
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
@@ -321,6 +334,13 @@
       call bcast_real(humidity_sink_min)
       call bcast_real(humidity_sink_max)
       call bcast_real(humidity_control_elapse)
+      call bcast_real(solute_dry_diam_nm)
+      call bcast_real(nacl_match_dry_diam_nm)
+      call bcast_real(init_hydration_rh_frac)
+      call bcast_real(solute_rho_dry)
+      call bcast_real(nacl_rho_dry)
+      call bcast_real(solute_os_user)
+      call bcast_real(nacl_os_ref)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -593,6 +613,23 @@
 !  Set constants:
 
       call set_constants( testcase )
+
+      if (custom_solute_init.eq.1) then
+        solute_dry_diam_nm = max(solute_dry_diam_nm,1.0e-6)
+        nacl_match_dry_diam_nm = max(nacl_match_dry_diam_nm,1.0e-6)
+        solute_rho_dry = max(solute_rho_dry,1.0)
+        nacl_rho_dry = max(nacl_rho_dry,1.0)
+        if (match_kohler_to_nacl.eq.1) then
+          ! Match the NaCl reference by preserving os*m_s in the Raoult term.
+          os = nacl_os_ref*(nacl_rho_dry*(nacl_match_dry_diam_nm**3))/ &
+               (solute_rho_dry*(solute_dry_diam_nm**3))
+        else
+          os = max(1.0d-6,dble(solute_os_user))
+        end if
+      else
+        os = max(1.0d-6,dble(solute_os_user))
+      end if
+      !$acc update device (os)
 
 !-----------------------------------------------------------------------
 !  Some "dummy" checks:
@@ -2720,6 +2757,16 @@
       if(dowr) write(outfile,*) 'humidity_sink_min=',humidity_sink_min
       if(dowr) write(outfile,*) 'humidity_sink_max=',humidity_sink_max
       if(dowr) write(outfile,*) 'humidity_control_elapse(s)=',humidity_control_elapse
+      if(dowr) write(outfile,*) 'custom_solute_init=',custom_solute_init
+      if(dowr) write(outfile,*) 'match_kohler_to_nacl=',match_kohler_to_nacl
+      if(dowr) write(outfile,*) 'solute_dry_diam_nm=',solute_dry_diam_nm
+      if(dowr) write(outfile,*) 'nacl_match_dry_diam_nm=',nacl_match_dry_diam_nm
+      if(dowr) write(outfile,*) 'init_hydration_rh_frac=',init_hydration_rh_frac
+      if(dowr) write(outfile,*) 'solute_rho_dry(kg/m3)=',solute_rho_dry
+      if(dowr) write(outfile,*) 'nacl_rho_dry(kg/m3)=',nacl_rho_dry
+      if(dowr) write(outfile,*) 'solute_os_user=',solute_os_user
+      if(dowr) write(outfile,*) 'nacl_os_ref=',nacl_os_ref
+      if(dowr) write(outfile,*) 'os_effective=',real(os)
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) 'kdiff2    =',kdiff2
       if(dowr) write(outfile,*) 'kdiff6    =',kdiff6
