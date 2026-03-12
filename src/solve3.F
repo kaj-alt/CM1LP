@@ -166,7 +166,7 @@
           humidity_control,humidity_mode,humidity_target_rh,humidity_sink,humidity_gain, &
           humidity_sink_min, &
           humidity_sink_max,humidity_control_elapse,humidity_wall_mult,humidity_wall_mult_min, &
-          humidity_wall_mult_max
+          humidity_wall_mult_max,humidity_last_update
 
       use constants
       use bc_module, only: bc2d, bcs, bcu, bcv, bcw, bcwsfc, &
