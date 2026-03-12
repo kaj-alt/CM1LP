@@ -290,6 +290,10 @@
 
     endif
 
+      call disp_err( nf90_def_var(ncid,"humidity_wall_mult",nf90_float,timeid,varid) , .true. )
+      call disp_err( nf90_put_att(ncid,varid,"long_name","humidity wall multiplier") , .true. )
+      call disp_err( nf90_put_att(ncid,varid,"units","nondimensional") , .true. )
+
 !--------------------------------------------------------
 !  Just to be sure:
 
@@ -566,6 +570,9 @@
 
     endif
 
+      call disp_err( nf90_inq_varid(ncid,'humidity_wall_mult',varid) , stop_on_error )
+      call disp_err( nf90_put_var(ncid,varid,humidity_wall_mult,(/time_index/)) , stop_on_error )
+
 #endif
 
       if( myid.eq.0 ) print *,'  Leaving netcdf_prelim '
@@ -802,6 +809,9 @@
       call disp_err( nf90_def_var(ncid,"umove" ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"vmove" ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"adaptmovetim" ,nf90_double,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_sink" ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_wall_mult" ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_last_update" ,nf90_double,(/timeid/),varid) , .true. )
 
       call disp_err( nf90_def_var(ncid,"cflmax"  ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_put_att(ncid,varid,"long_name","max Courant number from previous timestep") , .true. )

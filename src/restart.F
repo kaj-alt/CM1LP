@@ -360,6 +360,9 @@
       write(50) avgsfcs
       write(50) avgsfct
       write(50) avgsfcq
+      write(50) humidity_sink
+      write(50) humidity_wall_mult
+      write(50) humidity_last_update
     ENDIF
 #ifdef NETCDF
   ELSEIF( restart_format.eq.2 )THEN
@@ -508,6 +511,15 @@
 
       call disp_err( nf90_inq_varid(ncid,"avgsfcq",varid) , .true. )
       call disp_err( nf90_put_var(ncid,varid,avgsfcq,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"humidity_sink",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,humidity_sink,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"humidity_wall_mult",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,humidity_wall_mult,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"humidity_last_update",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,humidity_last_update,(/time_index/)) , .true. )
 
     ENDIF
 #endif
@@ -2251,6 +2263,8 @@
       character(len=6) :: aname
       integer :: i,j,k,n,np,nvar,nread,reqs,orecs,orecu,orecv,orecw,ndum
       integer :: ncid,time_index,old_format
+      real :: restart_humidity_sink,restart_humidity_wall_mult
+      double precision :: restart_humidity_last_update
       double precision, dimension(nbudget,0:numprocs-1) :: sbudget
       double precision, dimension(numq,0:numprocs-1) :: csq,dsq
       real, dimension(:,:), allocatable :: pfoo
@@ -2483,6 +2497,9 @@
       read(50) avgsfcs
       read(50) avgsfct
       read(50) avgsfcq
+      read(50) restart_humidity_sink
+      read(50) restart_humidity_wall_mult
+      read(50) restart_humidity_last_update
     ENDIF
 #ifdef NETCDF
   ELSEIF( restart_format.eq.2 )THEN
@@ -2632,6 +2649,15 @@
       call disp_err( nf90_inq_varid(ncid,"avgsfcq",varid) , .true. )
       call disp_err( nf90_get_var(ncid,varid,avgsfcq,(/time_index/)) , .true. )
 
+      call disp_err( nf90_inq_varid(ncid,"humidity_sink",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,restart_humidity_sink,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"humidity_wall_mult",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,restart_humidity_wall_mult,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"humidity_last_update",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,restart_humidity_last_update,(/time_index/)) , .true. )
+
     ENDIF
 #endif
   ENDIF
@@ -2684,6 +2710,15 @@
       call bcast_double(avgsfcs)
       call bcast_double(avgsfct)
       call bcast_double(avgsfcq)
+      call bcast_real(restart_humidity_sink)
+      call bcast_real(restart_humidity_wall_mult)
+      call bcast_double(restart_humidity_last_update)
+
+      if( humidity_control.eq.1 )then
+        humidity_sink = restart_humidity_sink
+        humidity_wall_mult = restart_humidity_wall_mult
+        humidity_last_update = restart_humidity_last_update
+      endif
 
 !---------------------------------------------------------------
 ! budget variables:

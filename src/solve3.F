@@ -359,7 +359,6 @@
       real :: dt_dropsub
       double precision :: dbldt_dropsub,mtime_dropsub
 
-      double precision, save :: humidity_last_update = -1.0d0
       double precision :: sumRH_local,sumRH_global,count_local,count_global
       double precision :: meanRH,meanRH_pct,new_sink,new_mult
       real :: qvs_rh,t_rh,rh_cell

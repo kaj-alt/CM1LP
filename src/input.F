@@ -219,6 +219,8 @@
            init_hydration_rh_frac,solute_rho_dry,nacl_rho_dry,                &
            solute_os_user,nacl_os_ref
 
+      double precision :: humidity_last_update
+
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,humidity_sink)

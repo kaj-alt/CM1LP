@@ -191,6 +191,7 @@
       humidity_wall_mult = 1.0
       humidity_wall_mult_min = 0.0
       humidity_wall_mult_max = 2.0
+      humidity_last_update = -1.0d0
 
       ! defaults for solute initialization and Kohler matching
       custom_solute_init = 0
