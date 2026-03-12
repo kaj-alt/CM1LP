@@ -212,9 +212,10 @@
            base_pbot,base_ptop,base_thbot,base_thtop,base_qvbot,base_qvtop,   &
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
            drop_inject_elapse,drop_inject_time,                               &
-           humidity_target_rh,humidity_sink,humidity_gain,                    &
+           humidity_target_rh,humidity_sink,humidity_sink_gain,               &
            humidity_sink_min,humidity_sink_max,humidity_control_elapse,       &
-           humidity_wall_mult,humidity_wall_mult_min,humidity_wall_mult_max,  &
+           humidity_wall_mult,humidity_wall_mult_gain,                        &
+           humidity_wall_mult_min,humidity_wall_mult_max,                     &
            solute_dry_diam_nm,nacl_match_dry_diam_nm,                         &
            init_hydration_rh_frac,solute_rho_dry,nacl_rho_dry,                &
            solute_os_user,nacl_os_ref
@@ -348,9 +349,10 @@
 	      drop_evap,drop_traj,                                            &
               humidity_control,humidity_mode,                                  &
               humidity_target_rh,humidity_sink,                               &
-              humidity_gain,humidity_sink_min,humidity_sink_max,              &
-              humidity_control_elapse,                                         &
-              humidity_wall_mult,humidity_wall_mult_min,humidity_wall_mult_max,&
+              humidity_sink_gain,humidity_sink_min,humidity_sink_max,         &
+              humidity_control_elapse,                                        &
+              humidity_wall_mult,humidity_wall_mult_gain,                     &
+              humidity_wall_mult_min,humidity_wall_mult_max,                  &
               custom_solute_init,match_kohler_to_nacl,                        &
               solute_dry_diam_nm,nacl_match_dry_diam_nm,                      &
               init_hydration_rh_frac,solute_rho_dry,nacl_rho_dry,             &

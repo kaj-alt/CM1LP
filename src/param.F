@@ -184,11 +184,12 @@
       humidity_mode = 1
       humidity_target_rh = 100.0
       humidity_sink = 1.74e-6
-      humidity_gain = 0.0
+      humidity_sink_gain = 0.0
       humidity_sink_min = 0.0
       humidity_sink_max = 1.0e-3
       humidity_control_elapse = 1.0
       humidity_wall_mult = 1.0
+      humidity_wall_mult_gain = 0.0
       humidity_wall_mult_min = 0.0
       humidity_wall_mult_max = 2.0
       humidity_last_update = -1.0d0
@@ -336,11 +337,12 @@
       call bcast_real(drop_mult)
       call bcast_real(humidity_target_rh)
       call bcast_real(humidity_sink)
-      call bcast_real(humidity_gain)
+      call bcast_real(humidity_sink_gain)
       call bcast_real(humidity_sink_min)
       call bcast_real(humidity_sink_max)
       call bcast_real(humidity_control_elapse)
       call bcast_real(humidity_wall_mult)
+      call bcast_real(humidity_wall_mult_gain)
       call bcast_real(humidity_wall_mult_min)
       call bcast_real(humidity_wall_mult_max)
       call bcast_real(solute_dry_diam_nm)
@@ -2763,11 +2765,12 @@
       if(dowr) write(outfile,*) 'humidity_mode=',humidity_mode
       if(dowr) write(outfile,*) 'humidity_target_rh(%)=',humidity_target_rh
       if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink
-      if(dowr) write(outfile,*) 'humidity_gain=',humidity_gain
+      if(dowr) write(outfile,*) 'humidity_sink_gain=',humidity_sink_gain
       if(dowr) write(outfile,*) 'humidity_sink_min=',humidity_sink_min
       if(dowr) write(outfile,*) 'humidity_sink_max=',humidity_sink_max
       if(dowr) write(outfile,*) 'humidity_control_elapse(s)=',humidity_control_elapse
       if(dowr) write(outfile,*) 'humidity_wall_mult=',humidity_wall_mult
+      if(dowr) write(outfile,*) 'humidity_wall_mult_gain=',humidity_wall_mult_gain
       if(dowr) write(outfile,*) 'humidity_wall_mult_min=',humidity_wall_mult_min
       if(dowr) write(outfile,*) 'humidity_wall_mult_max=',humidity_wall_mult_max
       if(dowr) write(outfile,*) 'custom_solute_init=',custom_solute_init

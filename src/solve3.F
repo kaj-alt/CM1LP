@@ -163,10 +163,10 @@
           td_diss,td_rad,td_pbl,td_hturb,td_vturb,qd_hturb,qd_vturb,ud_pbl,vd_pbl,qd_pbl, &
           td_nudge,qd_nudge,prcl_droplet,ntwk,pdcomp,nbc,ebc,sbc,wbc,two_way_coupling, &
           output_rain,output_sws,output_svs,output_sps,output_srs,output_sgs,output_sus,output_shs, &
-          humidity_control,humidity_mode,humidity_target_rh,humidity_sink,humidity_gain, &
+          humidity_control,humidity_mode,humidity_target_rh,humidity_sink,humidity_sink_gain, &
           humidity_sink_min, &
-          humidity_sink_max,humidity_control_elapse,humidity_wall_mult,humidity_wall_mult_min, &
-          humidity_wall_mult_max,humidity_last_update
+          humidity_sink_max,humidity_control_elapse,humidity_wall_mult,humidity_wall_mult_gain, &
+          humidity_wall_mult_min,humidity_wall_mult_max,humidity_last_update
 
       use constants
       use bc_module, only: bc2d, bcs, bcu, bcv, bcw, bcwsfc, &
@@ -1098,12 +1098,12 @@
                 meanRH_pct = 100.0d0*meanRH
 
                 if (humidity_mode.eq.1) then
-                  new_sink = dble(humidity_sink) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
+                  new_sink = dble(humidity_sink) + dble(humidity_sink_gain)*(meanRH_pct - dble(humidity_target_rh))
                   new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
                   humidity_sink = sngl(new_sink)
                   !$acc update device(humidity_sink)
                 elseif (humidity_mode.eq.2) then
-                  new_mult = dble(humidity_wall_mult) + dble(humidity_gain)*(meanRH_pct - dble(humidity_target_rh))
+                  new_mult = dble(humidity_wall_mult) + dble(humidity_wall_mult_gain)*(meanRH_pct - dble(humidity_target_rh))
                   new_mult = min(dble(humidity_wall_mult_max),max(dble(humidity_wall_mult_min),new_mult))
                   humidity_wall_mult = sngl(new_mult)
                   !$acc update device(humidity_wall_mult)

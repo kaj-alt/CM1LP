@@ -351,26 +351,31 @@
  drop_inject_time = 20.0,
  two_way_coupling = 1,
  drop_evap = 1,
-drop_traj = 0,
-humidity_control = 0,
-humidity_mode = 2,
-humidity_target_rh = 95.0,
-humidity_sink = 1.74e-6,
-humidity_gain = 0.0,
-humidity_sink_min = 0.0,
-humidity_sink_max = 1.0e-3,
-humidity_control_elapse = 1.0,
-humidity_wall_mult = 0.95,
-humidity_wall_mult_min = 0.50,
-humidity_wall_mult_max = 1.20,
-custom_solute_init = 0,
-match_kohler_to_nacl = 0,
-solute_dry_diam_nm = 200.0,
-nacl_match_dry_diam_nm = 70.0,
-init_hydration_rh_frac = -1.0,
-solute_rho_dry = 2160.0,
-nacl_rho_dry = 2160.0,
-solute_os_user = 1.0,
+ drop_traj = 0,
+
+ !Humidity control for testcase 16 (Pi chamber)
+ humidity_control = 0,
+ humidity_mode = 2,            ! 1 = use sink control, 2 = use wall_mult control
+ humidity_target_rh = 95.0,    ! Target chamber RH (%) when humidity_control = 1
+ humidity_sink = 1.74e-6,      ! Constant sink if humidity_control = 0 and humidity_mode = 1
+ humidity_sink_gain = 0.0,     ! Sink feedback gain if humidity_control = 1 and humidity_mode = 1
+ humidity_sink_min = 0.0,      ! Minimum allowed sink during control
+ humidity_sink_max = 1.0e-3,   ! Maximum allowed sink during control
+ humidity_control_elapse = 1.0,! Seconds between controller updates
+ humidity_wall_mult = 0.95,    ! Constant wall multiplier if humidity_control = 0 and humidity_mode = 2
+ humidity_wall_mult_gain = 0.0,! Wall multiplier feedback gain if humidity_control = 1 and humidity_mode = 2
+ humidity_wall_mult_min = 0.50,! Minimum allowed wall multiplier during control
+ humidity_wall_mult_max = 1.20,! Maximum allowed wall multiplier during control
+
+ !Solute/aerosol initialization
+ custom_solute_init = 0,
+ match_kohler_to_nacl = 0,     ! 1 = match custom solute to NaCl; only used if custom_solute_init = 1
+ solute_dry_diam_nm = 200.0,   ! Dry solute diameter for custom initialization
+ nacl_match_dry_diam_nm = 70.0,! NaCl reference dry diameter for Kohler matching
+ init_hydration_rh_frac = -1.0,! < 0 uses default hydration initialization
+ solute_rho_dry = 2160.0,      ! Dry solute density
+ nacl_rho_dry = 2160.0,        ! Reference NaCl dry density
+ solute_os_user = 1.0,         ! User solute osmotic coefficient; ignored if match_kohler_to_nacl = 1
 nacl_os_ref = 1.0
  /
 
