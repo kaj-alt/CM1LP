@@ -362,7 +362,7 @@
       double precision :: sumRH_local,sumRH_global,count_local,count_global
       double precision :: meanRH,meanRH_pct,new_sink,new_mult
       real :: qvs_rh,t_rh,rh_cell
-      logical :: humctrl_due
+      logical :: humctrl_due,use_sink_mode
 
 !--------------------------------------------------------------------
       !$acc declare present(rrw)
@@ -1097,12 +1097,14 @@
                 meanRH = sumRH_global/max(1.0d0,count_global)
                 meanRH_pct = 100.0d0*meanRH
 
-                if (humidity_mode.eq.1) then
+                use_sink_mode = (humidity_mode.eq.1)
+
+                if (use_sink_mode) then
                   new_sink = dble(humidity_sink) + dble(humidity_sink_gain)*(meanRH_pct - dble(humidity_target_rh))
                   new_sink = min(dble(humidity_sink_max),max(dble(humidity_sink_min),new_sink))
                   humidity_sink = sngl(new_sink)
                   !$acc update device(humidity_sink)
-                elseif (humidity_mode.eq.2) then
+                else
                   new_mult = dble(humidity_wall_mult) + dble(humidity_wall_mult_gain)*(meanRH_pct - dble(humidity_target_rh))
                   new_mult = min(dble(humidity_wall_mult_max),max(dble(humidity_wall_mult_min),new_mult))
                   humidity_wall_mult = sngl(new_mult)
@@ -1111,9 +1113,9 @@
                 humidity_last_update = mtime_dropsub
 
                 if (myid.eq.0) then
-                  if (humidity_mode.eq.1) then
+                  if (use_sink_mode) then
                     write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' sink=',humidity_sink
-                  elseif (humidity_mode.eq.2) then
+                  else
                     write(*,'(a,f12.4,a,f10.4,a,f10.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' wall_mult=',humidity_wall_mult
                   endif
                 endif

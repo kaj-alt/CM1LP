@@ -353,19 +353,26 @@
  drop_evap = 1,
  drop_traj = 0,
 
- !Humidity control for testcase 16 (Pi chamber)
+ !Humidity forcing for testcase 16 (Pi chamber)
+ ! humidity_mode = 1 -> domain-wide vapor sink using humidity_sink
+ ! humidity_mode = 2 -> lateral wall humidity multiplier using humidity_wall_mult
+ ! humidity_control = 0 -> keep the selected actuator fixed at the namelist value
+ ! humidity_control = 1 -> update the selected actuator using RH feedback
+ ! IMPORTANT: mode 2 only affects lateral sides that use bc = 4 in the current code
  humidity_control = 0,
- humidity_mode = 2,            ! 1 = use sink control, 2 = use wall_mult control
+ humidity_mode = 2,
  humidity_target_rh = 95.0,    ! Target chamber RH (%) when humidity_control = 1
- humidity_sink = 1.74e-6,      ! Constant sink if humidity_control = 0 and humidity_mode = 1
- humidity_sink_gain = 0.0,     ! Sink feedback gain if humidity_control = 1 and humidity_mode = 1
- humidity_sink_min = 0.0,      ! Minimum allowed sink during control
- humidity_sink_max = 1.0e-3,   ! Maximum allowed sink during control
  humidity_control_elapse = 1.0,! Seconds between controller updates
- humidity_wall_mult = 0.95,    ! Constant wall multiplier if humidity_control = 0 and humidity_mode = 2
- humidity_wall_mult_gain = 0.0,! Wall multiplier feedback gain if humidity_control = 1 and humidity_mode = 2
- humidity_wall_mult_min = 0.50,! Minimum allowed wall multiplier during control
- humidity_wall_mult_max = 1.20,! Maximum allowed wall multiplier during control
+ ! Mode 1 settings: domain-wide vapor sink
+ humidity_sink = 1.74e-6,      ! Fixed sink if humidity_control = 0 and humidity_mode = 1
+ humidity_sink_gain = 0.0,     ! RH-feedback gain if humidity_control = 1 and humidity_mode = 1
+ humidity_sink_min = 0.0,      ! Lower bound for humidity_sink during feedback
+ humidity_sink_max = 1.0e-3,   ! Upper bound for humidity_sink during feedback
+ ! Mode 2 settings: wall humidity multiplier
+ humidity_wall_mult = 0.95,    ! Fixed wall multiplier if humidity_control = 0 and humidity_mode = 2
+ humidity_wall_mult_gain = 0.0,! RH-feedback gain if humidity_control = 1 and humidity_mode = 2
+ humidity_wall_mult_min = 0.50,! Lower bound for humidity_wall_mult during feedback
+ humidity_wall_mult_max = 1.20,! Upper bound for humidity_wall_mult during feedback
 
  !Solute/aerosol initialization
  custom_solute_init = 0,
