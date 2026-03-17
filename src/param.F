@@ -9467,7 +9467,6 @@
       implicit none
 
       real, parameter :: heps = 1.0e-12
-      integer :: ierr
       logical :: sink_mode, wall_mode, feedback_on
       logical :: west_wall_active, east_wall_active
       logical :: south_wall_active, north_wall_active
@@ -9483,20 +9482,20 @@
       east_wall_active = (cm1setup.eq.3 .and. ebc.eq.4)
       south_wall_active = (cm1setup.eq.3 .and. sbc.eq.4)
       north_wall_active = (cm1setup.eq.3 .and. nbc.eq.4)
-      any_wall_active = west_wall_active .or. east_wall_active .or.
-     &                  south_wall_active .or. north_wall_active
+      any_wall_active = west_wall_active .or. east_wall_active .or. &
+                        south_wall_active .or. north_wall_active
 
       sink_settings_active = sink_mode
       wall_settings_active = wall_mode .and. any_wall_active
 
-      sink_settings_tuned = abs(humidity_sink-1.74e-6).gt.heps .or.
-     &                      abs(humidity_sink_gain).gt.heps .or.
-     &                      abs(humidity_sink_min).gt.heps .or.
-     &                      abs(humidity_sink_max-1.0e-3).gt.heps
-      wall_settings_tuned = abs(humidity_wall_mult-1.0).gt.heps .or.
-     &                      abs(humidity_wall_mult_gain).gt.heps .or.
-     &                      abs(humidity_wall_mult_min).gt.heps .or.
-     &                      abs(humidity_wall_mult_max-2.0).gt.heps
+      sink_settings_tuned = abs(humidity_sink-1.74e-6).gt.heps .or. &
+                            abs(humidity_sink_gain).gt.heps .or. &
+                            abs(humidity_sink_min).gt.heps .or. &
+                            abs(humidity_sink_max-1.0e-3).gt.heps
+      wall_settings_tuned = abs(humidity_wall_mult-1.0).gt.heps .or. &
+                            abs(humidity_wall_mult_gain).gt.heps .or. &
+                            abs(humidity_wall_mult_min).gt.heps .or. &
+                            abs(humidity_wall_mult_max-2.0).gt.heps
 
       if( humidity_mode.ne.1 .and. humidity_mode.ne.2 )then
         if(myid.eq.0)then
