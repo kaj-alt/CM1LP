@@ -370,7 +370,7 @@
  humidity_sink_max = 1.0e-3,   ! Upper bound for humidity_sink during feedback
  ! Mode 2 settings: wall humidity multiplier
  humidity_wall_mult = 0.95,    ! Fixed wall multiplier if humidity_control = 0 and humidity_mode = 2
- humidity_wall_mult_gain = 0.0,! RH-feedback gain if humidity_control = 1 and humidity_mode = 2
+ humidity_wall_mult_gain = 0.0,! RH-feedback gain if humidity_control = 1 and humidity_mode = 2; positive gain increases wall RH when chamber RH is below target
  humidity_wall_mult_min = 0.50,! Lower bound for humidity_wall_mult during feedback
  humidity_wall_mult_max = 1.20,! Upper bound for humidity_wall_mult during feedback
 

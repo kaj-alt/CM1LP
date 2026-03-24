@@ -1105,7 +1105,7 @@
                   humidity_sink = sngl(new_sink)
                   !$acc update device(humidity_sink)
                 else
-                  new_mult = dble(humidity_wall_mult) + dble(humidity_wall_mult_gain)*(meanRH_pct - dble(humidity_target_rh))
+                  new_mult = dble(humidity_wall_mult) + dble(humidity_wall_mult_gain)*(dble(humidity_target_rh) - meanRH_pct)
                   new_mult = min(dble(humidity_wall_mult_max),max(dble(humidity_wall_mult_min),new_mult))
                   humidity_wall_mult = sngl(new_mult)
                   !$acc update device(humidity_wall_mult)
