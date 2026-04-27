@@ -128,7 +128,7 @@
       ELSEIF( testcase.eq.16)THEN
 
 	! Pi chamber DNS
-        g      = 0.01
+        g      = 0.0584
         rd     = 287.04
         cp     = 1005.7
         cp_dp  = 1005.7d0
