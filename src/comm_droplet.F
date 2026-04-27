@@ -697,7 +697,11 @@ contains
          write(*,110) myid,'ptrDepart:',ptrDepart
       endif
 
-#if (defined(_OPENACC) && defined(_COUNTPREFIX))
+#if (defined(_OPENACC) && defined(_COUNTPREFIX) && defined(_USE_GPU_DEPART_INDICES))
+      ! Default to the CPU path here. The GPU/count_prefix branch can trip
+      ! intermittent OpenACC present-table errors around ptrDepart/Depart_ind
+      ! for some droplet departure patterns, even when the same executable
+      ! runs other cases successfully.
 
       if(Depart(inorth).gt.0) then
          call GatherIndices(inorth,ptrDepart,pdata_neighbor,Depart_ind)
