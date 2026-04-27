@@ -614,7 +614,10 @@
                  (pdata_locind(np,2) .eq. undefined_index)
      enddo
 
-#if (defined(_COUNTPREFIX) && defined(_OPENACC))
+#if (defined(_COUNTPREFIX) && defined(_OPENACC) && defined(_USE_GPU_HOLE_INDICES))
+     ! Default to the CPU path here. The GPU/count_prefix branch has hit
+     ! intermittent OpenACC present-table failures around holes_ind/Cindx
+     ! for some droplet occupancy patterns.
 
      !$acc data create(Cindx)
 
