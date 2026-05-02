@@ -9,7 +9,7 @@ SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPTDIR"
 
 # Derecho requires mpif90; patch Makefile back if a CRC build changed it
-sed -i 's/override FC = mpiifort/override FC = mpif90/' src/Makefile
+sed -i 's/override FC  = mpiifort/override FC  = mpif90/' src/Makefile
 
 cd src
 make clean

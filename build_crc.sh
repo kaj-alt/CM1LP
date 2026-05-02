@@ -8,7 +8,7 @@ SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPTDIR"
 
 # CRC requires mpiifort; patch Makefile if needed
-sed -i 's/override FC = mpif90/override FC = mpiifort/' src/Makefile
+sed -i 's/override FC  = mpif90/override FC  = mpiifort/' src/Makefile
 
 cd src
 make clean
