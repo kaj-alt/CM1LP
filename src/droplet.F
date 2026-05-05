@@ -839,7 +839,7 @@
 !----------------------------------------------------------------------
 ! Final thing: Inject droplets which will be active on the next call of droplet_driver
 ! Requires inputting the current 10-meter wind speed
-   if ( .not. use_wall_bc ) then  
+   if ( .not. use_wall_bc .and. testcase.ne.16 ) then
       u10_ssgf = 0.0
       ! If _VERIFY macro is enabled than perform the following sum on
       ! the CPU 
