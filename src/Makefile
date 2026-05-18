@@ -204,6 +204,18 @@ ifeq (${FC},ifort)
 endif
 
 #-----------------------------------------------------------------------------
+#  Intel ifx compiler (oneAPI 2025+; ifort was dropped in intel/25.x)
+#-----------------------------------------------------------------------------
+ifeq (${FC},ifx)
+    OPTS         += -g -O2 -march=core-avx2 -assume byterecl -fp-model precise -ftz -init=snan,arrays -traceback -no-fma
+    CPP          += cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding
+    ifeq (${USE_OPENMP_L},true)
+        OPTS     += -qopenmp
+        OMP      += -DOPENMP
+    endif
+endif
+
+#-----------------------------------------------------------------------------
 #  GNU compiler
 #-----------------------------------------------------------------------------
 ifeq (${FC},gfortran)
