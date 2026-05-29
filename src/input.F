@@ -218,6 +218,7 @@
            base_pbot,base_ptop,base_thbot,base_thtop,base_qvbot,base_qvtop,   &
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
            drop_inject_elapse,drop_inject_time
+      real :: pi_grav = 9.81   ! effective gravity for Pi Chamber testcase (m/s^2); controls Ra
 
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
@@ -344,7 +345,7 @@
               prcl_rho,prcl_qsat,prcl_sfc,                                    &
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
-	      drop_evap,drop_traj,drop_sgs_opt
+	      drop_evap,drop_traj,drop_sgs_opt,pi_grav
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &

@@ -94,10 +94,11 @@
 
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
-      subroutine set_constants( testcase )
+      subroutine set_constants( testcase, g_pi_in )
       implicit none
 
       integer, intent(in) :: testcase
+      real, intent(in) :: g_pi_in
 
       p00 = p00_default
       if( testcase.eq.17 ) p00 = 101700.0
@@ -134,7 +135,7 @@
       ELSEIF( testcase.eq.16)THEN
 
 	! Pi chamber DNS
-        g      = 0.545
+        g      = g_pi_in
         rd     = 287.04
         cp     = 1005.7
         cp_dp  = 1005.7d0

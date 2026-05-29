@@ -306,6 +306,7 @@
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
+      call bcast_real(pi_grav)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -577,7 +578,7 @@
 !-----------------------------------------------------------------------
 !  Set constants:
 
-      call set_constants( testcase )
+      call set_constants( testcase, pi_grav )
 
 !-----------------------------------------------------------------------
 !  Some "dummy" checks:
@@ -2698,6 +2699,7 @@
       if(dowr) write(outfile,*) 'nparcelsMax=',nparcelsMax
       if(dowr) write(outfile,*) 'two_way_coupling=',two_way_coupling
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
+      if(dowr) write(outfile,*) 'pi_grav  =',pi_grav
       if(dowr) write(outfile,*) 'drop_sgs_opt=',drop_sgs_opt
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) 'kdiff2    =',kdiff2

@@ -1293,7 +1293,7 @@
                       ! 2 = pseudoadiabatic
 
         !psurf = 101510.0    ! surface pressure (Pa)
-        psurf = 83230.0    ! surface pressure (Pa)
+        psurf = 98981.0    ! surface pressure (Pa) - standard atm at Houghton, MI (~197m)
 
       DO j=jb,je
       DO i=ib,ie

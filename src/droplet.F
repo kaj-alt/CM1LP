@@ -369,7 +369,7 @@
 
     !For Pi chamber, this is often scaled to some other value
     if (testcase.eq.16) then
-       part_grav3 = -2.3122
+       part_grav3 = -sqrt(9.81*g)
     end if
 
 
