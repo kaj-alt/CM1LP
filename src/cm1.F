@@ -516,7 +516,7 @@ end module cuda_rt
       read(20,nml=param8)
       close(unit=20)
 
-      !$acc update device(nx,ny)
+      !$acc update device(nx,ny,nz)
 
       ! note:  read remainder of namelist sections in param.F !
 

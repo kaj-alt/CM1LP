@@ -13,7 +13,7 @@
 
     !$acc declare create (ru,mw,surften,rhow,rhow_dp,kappa_s,rho_solute, &
     !$acc                 lv1,lv1_dp,lv2,lv2_dp,cpl,cpl_dp,cp,cp_dp,eps, &
-    !$acc                 p00,rp00)
+    !$acc                 p00,rp00,g)
 
       !----------------
 
@@ -231,7 +231,7 @@
 
       !$acc update device (ru,mw,surften,rhow,rhow_dp,kappa_s,rho_solute, &
       !$acc                lv1,lv1_dp,lv2,lv2_dp,cpl,cpl_dp,cp,cp_dp,eps, &
-      !$acc                p00,rp00)
+      !$acc                p00,rp00,g)
 
       end subroutine set_constants
 

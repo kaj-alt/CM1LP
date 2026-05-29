@@ -788,21 +788,27 @@
    !Now transfer these to the end of the pdata list
    !Simply move the last particle in the list, pdata(nparcelsLocalActive,:), to a hole and update nparcelsLocalActive
 
-   ! JS: need to gpu-enable the following code section for a non-MPI run
+   ! Non-MPI compaction: not GPU-ported. Requires pdata on host while it may be live
+   ! on device. Enforce CPU-only path by syncing pdata host before and device after.
+#ifdef _OPENACC
+      !$acc update host(pdata,pdata_locind,pdata_neighbor) if_present
+#endif
    do np=numHoles,1,-1
       if (holes_ind(np) .eq. nparcelsLocalActive) then
-         nparcelsLocalActive = nparcelsLocalActive-1  !If the dead particle is at end, simply reduce nparcelsLocalActive
+         nparcelsLocalActive = nparcelsLocalActive-1
       else
          pdata(holes_ind(np),:) = pdata(nparcelsLocalActive,:)
          pdata_locind(holes_ind(np),:) = pdata_locind(nparcelsLocalActive,:)
          pdata_neighbor(holes_ind(np)) = pdata_neighbor(nparcelsLocalActive)
          nparcelsLocalActive = nparcelslocalActive-1
       end if
-      ! reset all the information for this "dead" droplet
       pdata_locind(nparcelsLocalActive+1,:) = undefined_index
       pdata(nparcelsLocalActive+1,:) = neg_huge
       pdata_neighbor(nparcelsLocalActive+1) = undefined_index
    end do
+#ifdef _OPENACC
+      !$acc update device(pdata,pdata_locind,pdata_neighbor) if_present
+#endif
 
     if(timestats.ge.1) time_droplet=time_droplet+mytime()
 
@@ -5770,16 +5776,12 @@
          is_local = .true.
       end if
 
-      ! check optional input
+      ! check optional input (stop replaced with return: stop is invalid in acc routine seq)
       if ( present(neighbor) ) then
-         if ( .not. present(errcode) ) then
-            stop "neighbor is provided but errcode is not provided ..."
-         end if
+         if ( .not. present(errcode) ) return
       end if
       if ( present(errcode) ) then
-         if ( .not. present(neighbor) ) then
-            stop "errcode is provided but neighbor is not provided ..."
-         end if
+         if ( .not. present(neighbor) ) return
       end if
 
       if ( present(neighbor) ) then

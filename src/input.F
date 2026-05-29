@@ -167,7 +167,7 @@
                      nparcelsLocalActive
       integer :: drop_sgs_opt = 0
 
-      !$acc declare create (ib,ie,jb,je,kb,ke,numq,nparcelsInit,npvals,nx,ny, &
+      !$acc declare create (ib,ie,jb,je,kb,ke,numq,nparcelsInit,npvals,nx,ny,nz, &
       !$acc       axisymm,terrain_flag,ni,nj,nip1,njp1,nk,nkp1,nkm1,imoist,   &
       !$acc                 nqv,nqc,nqr,nqi,nqs,nqg,bbc,tbc,wbc,ebc,sbc,nbc,  &
       !$acc                 imove,prvpx,prvpy,prvpz,prusgs,prvsgs,            &
@@ -220,7 +220,7 @@
            drop_inject_elapse,drop_inject_time
       real :: pi_grav = 9.81   ! effective gravity for Pi Chamber testcase (m/s^2); controls Ra
 
-      !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
+      !$acc declare create (dx,dy,dz,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time)
