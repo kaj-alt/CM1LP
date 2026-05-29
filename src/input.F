@@ -81,7 +81,7 @@
               prpt1,prpt2,prqv,prq1,prq2,prnc1,prnc2,prkm,prkh,prtke,         &
               prdbz,prb,prvpg,przv,prrho,prqsl,prqsi,prznt,prust,przs,prsig,  &
               prvpx,prvpy,prvpz,prusgs,prvsgs,prwsgs,prsigsgs,prrp,prrp0,     &
-              prms,prkap,prtp,prmult,pract,                                   &
+              prms,prkap,prrhosol,prtp,prmult,pract,                          &
               prpidx,prprocidx,                                               &
               nql1,nql2,nqs1,nqs2,nnc1,nnc2,nvl1,nvl2,nzl1,nzl2,              &
               nbudget,budrain,cm1setup,testcase,                              &
@@ -171,7 +171,7 @@
       !$acc       axisymm,terrain_flag,ni,nj,nip1,njp1,nk,nkp1,nkm1,imoist,   &
       !$acc                 nqv,nqc,nqr,nqi,nqs,nqg,bbc,tbc,wbc,ebc,sbc,nbc,  &
       !$acc                 imove,prvpx,prvpy,prvpz,prusgs,prvsgs,            &
-      !$acc                 prwsgs,prsigsgs,prrp,prrp0,prms,prkap,prtp,       &
+      !$acc                 prwsgs,prsigsgs,prrp,prrp0,prms,prkap,prrhosol,prtp, &
       !$acc                 prx,pry,prz,prsig,ngxy,ngz,ptype,pru,prv,prw,     &
       !$acc                 ibw,ibe,ibs,ibn,ibc,iec,jbc,jec,kbc,kec,          &
       !$acc                 ibt,iet,jbt,jet,kbt,ket,two_way_coupling,         &
@@ -225,11 +225,19 @@
       ! rate constant, spreading the per-cell vapor sink across more grid cells).
       real :: injection_rate_scale = 1.0
 
+      integer, parameter :: max_species = 8
+      integer :: nspecies = 1
+      real :: kappa_sp(max_species) = (/ 1.233, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      real :: rho_sp(max_species) = (/ 2160.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      real :: dry_diam_sp(max_species) = (/ 70.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      real :: frac_sp(max_species) = (/ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time,              &
       !$acc                 injection_rate_scale)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies)
 
 !-----------------------------------------------------------------------
 
@@ -351,7 +359,8 @@
               prcl_rho,prcl_qsat,prcl_sfc,                                    &
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
-	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale
+	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
+              nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &

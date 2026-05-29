@@ -108,6 +108,7 @@
       integer iterrain
       integer :: inum
       real :: var
+      real :: frac_sum
       real :: zfw1d(kb:ke+1), zfs1d(kb:ke+1)
       double precision :: gzc(kb:ke+1), gze(kb:ke+1)
       integer :: nbndlyr    = 0
@@ -307,6 +308,21 @@
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
       call bcast_real(injection_rate_scale)
+      call bcast_int(nspecies)
+      call bcast_real(kappa_sp,1,max_species)
+      call bcast_real(rho_sp,1,max_species)
+      call bcast_real(dry_diam_sp,1,max_species)
+      call bcast_real(frac_sp,1,max_species)
+      if(dowr) then
+        frac_sum = 0.0
+        do i=1,nspecies
+          frac_sum = frac_sum + frac_sp(i)
+        end do
+        if (abs(frac_sum - 1.0) > 0.01) then
+          write(*,*) 'WARNING: frac_sp does not sum to 1.0; sum=',frac_sum
+        end if
+      end if
+      !$acc update device(nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2699,6 +2715,14 @@
       if(dowr) write(outfile,*) 'nparcelsMax=',nparcelsMax
       if(dowr) write(outfile,*) 'two_way_coupling=',two_way_coupling
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
+      if(dowr) write(outfile,*) 'nspecies =',nspecies
+      if(dowr) then
+        do i=1,nspecies
+          write(outfile,'(a,i2,a,f8.4,a,f8.1,a,e10.3,a,f6.3)') &
+            '  species ',i,': kappa=',kappa_sp(i),' rho=',rho_sp(i), &
+            ' dry_diam=',dry_diam_sp(i),' frac=',frac_sp(i)
+        end do
+      end if
       if(dowr) write(outfile,*) 'drop_sgs_opt=',drop_sgs_opt
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) 'kdiff2    =',kdiff2
@@ -6160,6 +6184,10 @@
           npvals = npvals+1
           npvars = npvars+1
           prkap = npvals !Droplet hygroscopicity parameter
+
+          npvals = npvals+1
+          npvars = npvars+1
+          prrhosol = npvals !Droplet solute density [kg/m^3]
 
           npvals = npvals+1
           npvars = npvars+1

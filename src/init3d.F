@@ -484,17 +484,19 @@
                 ! Case 17 samples dry aerosol diameter from a lognormal,
                 ! then rehydrates it to equilibrium at 80% RH.
                 pdata(i,prkap) = 0.6
-                call lognormal_droplet(pdata(i,prrp),pdata(i,prms),pdata(i,prkap),randomNumbers)
+                pdata(i,prrhosol) = rho_solute
+                call lognormal_droplet(pdata(i,prrp),pdata(i,prms),pdata(i,prkap),pdata(i,prrhosol),randomNumbers)
                 pdata(i,prrp0) = pdata(i,prrp)
              else
                 !Droplet size (radius)
                 pdata(i,prrp) = 2.0e-6
                 pdata(i,prrp0) = 2.0e-6
-     
+
                 !Droplet solute mass
                 salinity = 0.066
                 pdata(i,prms) = salinity*rhow*4.0/3.0*pi*pdata(i,prrp)**3
                 pdata(i,prkap) = kappa_s
+                pdata(i,prrhosol) = rho_solute
              end if
 
              dzbot = max(zf(iloc,jloc,kb+1)-zf(iloc,jloc,kb),1.0e-6)

@@ -1805,7 +1805,7 @@
       use input, only : ib,ie,jb,je,kb,ke,numq,npvals,nx,ny,viscosity, &
           pr_num,sc_num,axisymm,terrain_flag,maxz,minx,maxx,miny,maxy, &
           prvpx,prvpy,prvpz,prusgs,prvsgs,prwsgs,prsigsgs, &
-          prrp,prrp0,prms,prkap,prtp,prx,pry,prsig, &
+          prrp,prrp0,prms,prkap,prrhosol,prtp,prx,pry,prsig, &
           prz,pru,prv, &
           prw,prt,prqv,prprs,prrho,pract,prtime,prmult,ni,nj,mywest, &
           mysw,mynw,myeast,myse,myne,mysouth,mynorth,nparcelsLocal, &
@@ -1951,7 +1951,7 @@
       !mflag = 0, has equilibrium radius; mflag = 1, no equilibrium (uses itself as initial guess)
       call rad_solver2(guess,mflag,prsval,rhoval,tval,qval, &
                        pdata(np,prtp),pdata(np,prms),pdata(np,prkap), &
-                       pdata(np,prrp),np)
+                       dble(pdata(np,prrhosol)),pdata(np,prrp),np)
 
       !Nondimensionalize the guesses
       if (mflag.eq.0) then
@@ -1967,7 +1967,8 @@
                            rt_start,rt_zeros,flag,dble(prsval), &
                            dble(rhoval),dble(tval),dble(qval), &
                            dble(pdata(np,prtp)),dble(pdata(np,prms)), &
-                           dble(pdata(np,prkap)),dble(pdata(np,prrp)),np)
+                           dble(pdata(np,prkap)),dble(pdata(np,prrhosol)), &
+                           dble(pdata(np,prrp)),np)
 
       !If Gauss-Newton failed to converge, flag is set to 1 and try Levenberg-Marquardt algorithm
       if (flag==1) then
@@ -1976,7 +1977,7 @@
                         rt_zeros,flag,dble(prsval),dble(rhoval), &
                         dble(tval),dble(qval),dble(pdata(np,prtp)), &
                         dble(pdata(np,prms)),dble(pdata(np,prkap)), &
-                        dble(pdata(np,prrp)),np)
+                        dble(pdata(np,prrhosol)),dble(pdata(np,prrp)),np)
       end if
 
       !In rare cases both nonlinear solvers fail to converge
@@ -3469,7 +3470,7 @@
       do np=1,nparcelsLocalActive
          tnummult = tnummult + pdata(np,prmult)
          tmasspart = tmasspart + (rhow*4.0/3.0*pi*pdata(np,prrp)**3)*pdata(np,prmult)
-         if (pdata(np,prrp) .lt. crit_radius(pdata(np,prms),pdata(np,prkap),pdata(np,prt))) then
+         if (pdata(np,prrp) .lt. crit_radius(pdata(np,prms),pdata(np,prkap),pdata(np,prrhosol),pdata(np,prt))) then
              tnumaerosol = tnumaerosol + pdata(np,prmult)
          else
              tnumdrop = tnumdrop + pdata(np,prmult)
@@ -3728,7 +3729,8 @@
                                                ! (like at initialization; other times this is a problem, but let it break elsewhere)
             call calc_qstar(qstar_tmp,pdata(np,prprs),pdata(np,prrho), &
                             pdata(np,prt),pdata(np,prqv),pdata(np,prtp), &
-                            pdata(np,prms),pdata(np,prkap),pdata(np,prrp))
+                            pdata(np,prms),pdata(np,prkap),pdata(np,prrhosol), &
+                            pdata(np,prrp))
             !$acc atomic update
             qstardp(k) = qstardp(k) + qstar_tmp
             !$acc atomic update
@@ -4085,7 +4087,7 @@
          hist_radius(ibin) = hist_radius(ibin) + pdata(np,prmult)
 
          if (pdata(np,prms) .gt. 0.0) then
-            dry_rad10_tmp = log10((3.0*pdata(np,prms)/(4.0*pi*real(rho_solute)))**(1.0/3.0))
+            dry_rad10_tmp = log10((3.0*pdata(np,prms)/(4.0*pi*pdata(np,prrhosol)))**(1.0/3.0))
          else
             dry_rad10_tmp = rmin10 - 0.5*dhrad
          end if
@@ -4400,16 +4402,17 @@
 
       end subroutine find_vertical_location_index
 
-      subroutine rad_solver2(guess,mflag,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius,np)
+      subroutine rad_solver2(guess,mflag,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius,np)
       !$acc routine seq
       use input , only : pi_dp
-      use constants , only : mw,ru,rho_solute
+      use constants , only : mw,ru
       use cm1libs , only : deslf
       implicit none
 
       double precision, intent(out) :: guess
       integer, intent(out) :: mflag
       real, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+      double precision, intent(in) :: rho_solute_p
       integer, intent(in) :: np
       double precision :: dry_radius3, esa, rhval
 
@@ -4422,7 +4425,7 @@
       !Solve the cubic for the equilibrium radius
 
       if (rhval .lt. 0.999d0) then
-         dry_radius3 = dble(m_s)/(rho_solute*((4.0d0/3.0d0)*pi_dp))
+         dry_radius3 = dble(m_s)/(rho_solute_p*((4.0d0/3.0d0)*pi_dp))
          guess = kohler_equil_radius_dry3(dry_radius3,dble(kappa_p),  &
                                           dble(tval),rhval)
       else 
@@ -4435,13 +4438,13 @@
 
       subroutine gauss_newton_2d(diffnorm,dt_nondim,taup_scale,rt_start, &
                                  rt_zeros,flag,prsval,rhoval,tval,qval, &
-                                 Tp,m_s,kappa_p,radius,np)
+                                 Tp,m_s,kappa_p,rho_solute_p,radius,np)
         !$acc routine seq
 
         implicit none
 
         double precision, intent(in) :: diffnorm,dt_nondim,taup_scale,rt_start(2)
-        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
         double precision, intent(out) :: rt_zeros(2)
         integer, intent(out) :: flag
         integer, intent(in) :: np
@@ -4476,11 +4479,11 @@
                 !Compute the RHS of the droplet temp and radius equations
                 call ie_vrt_nd(diffnorm,v1(1),v1(2),fv1,dt_nondim, &
                                taup_scale,prsval,rhoval,tval,qval, &
-                               Tp,m_s,kappa_p,radius,np,flag)
+                               Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
                 !Approximate the Jacobian
                 call jacob_approx_2d(diffnorm,v1(1),v1(2),dt_nondim,J, &
                                      taup_scale,prsval,rhoval,tval,qval, &
-                                     Tp,m_s,kappa_p,radius,np,flag)
+                                     Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
 
               if( abs(J(1,1)).gt.1.0d76 ) flag = 1
               if( abs(J(1,2)).gt.1.0d76 ) flag = 1
@@ -4557,12 +4560,12 @@
 
       subroutine LV_solver(diffnorm,dt_nondim,taup_scale,rt_start, &
                            rt_zeros,flag,prsval,rhoval,tval,qval, &
-                           Tp,m_s,kappa_p,radius,np)
+                           Tp,m_s,kappa_p,rho_solute_p,radius,np)
         !$acc routine seq
         implicit none
 
         double precision, intent(in) :: diffnorm,dt_nondim,taup_scale,rt_start(2)
-        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
         double precision, intent(out) :: rt_zeros(2)
         integer, intent(out) :: flag
         integer, intent(in) :: np
@@ -4604,11 +4607,11 @@
         !Approximate the Jacobian of the system
         call jacob_approx_2d(diffnorm,v1(1),v1(2),dt_nondim,J, &
                              taup_scale,prsval,rhoval,tval,qval, &
-                             Tp,m_s,kappa_p,radius,np,flag)
+                             Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
         !Compute the RHS of the temperature and radius equations
         call ie_vrt_nd(diffnorm,v1(1),v1(2),fv1,dt_nondim,taup_scale, &
                        prsval,rhoval,tval,qval,Tp,m_s,kappa_p, &
-                       radius,np,flag)
+                       rho_solute_p,radius,np,flag)
 
       if( abs(J(1,1)).gt.1.0d76 ) flag = 1
       if( abs(J(1,2)).gt.1.0d76 ) flag = 1
@@ -4661,7 +4664,7 @@
         !Use the RHS to update the lambda parameter
         call ie_vrt_nd(diffnorm,rt_zeros(1),rt_zeros(2),fv2,dt_nondim, &
                        taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                       kappa_p,radius,np,flag)
+                       kappa_p,rho_solute_p,radius,np,flag)
 
       if( abs(fv1(1)).gt.1.0d76 ) flag = 1
       if( abs(fv1(2)).gt.1.0d76 ) flag = 1
@@ -4711,12 +4714,12 @@
 
       subroutine jacob_approx_2d(diffnorm,rnext,tnext,dt_nondim,J, &
                                  taup_scale,prsval,rhoval,tval,qval, &
-                                 Tp,m_s,kappa_p,radius,np,flag)
+                                 Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
         !$acc routine seq
         implicit none
         integer :: n
 
-        double precision, intent(in) :: diffnorm,rnext,tnext,dt_nondim,taup_scale,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+        double precision, intent(in) :: diffnorm,rnext,tnext,dt_nondim,taup_scale,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
         double precision, intent(out), dimension(1:2, 1:2) :: J
         double precision :: diff,v_output(3),rt_output(2),xper(2),fxper(2),ynext(2),xper2(2),fxper2(2)
         integer, intent(in) :: np
@@ -4728,10 +4731,10 @@
         ynext(1) = rnext
         ynext(2) = tnext
 
-        !Evaluate RHS 
+        !Evaluate RHS
         call ie_vrt_nd(diffnorm,rnext,tnext,rt_output,dt_nondim, &
                        taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                       kappa_p,radius,np,flag)
+                       kappa_p,rho_solute_p,radius,np,flag)
 
         xper(1) = ynext(1)
         xper(2) = ynext(2)
@@ -4745,10 +4748,10 @@
 
            call ie_vrt_nd(diffnorm,xper(1),xper(2),fxper,dt_nondim, &
                           taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                          kappa_p,radius,np,flag)
+                          kappa_p,rho_solute_p,radius,np,flag)
            call ie_vrt_nd(diffnorm,xper2(1),xper2(2),fxper2,dt_nondim, &
                           taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                          kappa_p,radius,np,flag)
+                          kappa_p,rho_solute_p,radius,np,flag)
 
            !Use these differences to compute the Jacobian
            J(1,n) = (fxper(1)-rt_output(1))/diff
@@ -4761,15 +4764,15 @@
 
       subroutine ie_vrt_nd(diffnorm,tempr,tempt,rt_output,dt_nondim, &
                            taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                           kappa_p,radius,np,flag)
+                           kappa_p,rho_solute_p,radius,np,flag)
       !$acc routine seq
-      use constants, only : rhow_dp,mw,ru,surften,rho_solute, &
+      use constants, only : rhow_dp,mw,ru,surften, &
                             cp_dp,cpl_dp,lv1_dp,lv2_dp
       use input, only : viscosity,pr_num,sc_num,pi_dp
       use cm1libs , only : drslf,deslf
       implicit none
 
-      double precision, intent(in) :: diffnorm,tempr,tempt,taup_scale,dt_nondim,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+      double precision, intent(in) :: diffnorm,tempr,tempt,taup_scale,dt_nondim,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
       double precision, intent(out) :: rT_output(2)
       integer, intent(in) :: np
       integer, intent(inout) :: flag
@@ -4800,7 +4803,7 @@
         tmp = ((lhv*mw/ru)*((1.0d0/max(1.0d-10,tval))- &
               (1.0d0/max(1.0d-10,Tnext)))) + &
               ((2.0d0*mw*surften)/(ru*rhow_dp*rnext*Tnext)) - &
-              ((kappa_p*m_s*rhow_dp/rho_solute)/(VolP*rhop-m_s))
+              ((kappa_p*m_s*rhow_dp/rho_solute_p)/(VolP*rhop-m_s))
         if( tmp.gt.600.0 )then
           qstr = qval
           flag = 1
@@ -4824,14 +4827,14 @@
 
       end subroutine ie_vrt_nd
 
-      subroutine calc_qstar(qstar,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius)
+      subroutine calc_qstar(qstar,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius)
       !$acc routine seq
-      use constants , only : rhow_dp,mw,surften,ru,rho_solute,lv1_dp,lv2_dp
+      use constants , only : rhow_dp,mw,surften,ru,lv1_dp,lv2_dp
       use input, only : viscosity,pr_num,sc_num,pi_dp
       use cm1libs , only : deslf,drslf
       implicit none
 
-      real, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,radius
+      real, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
       double precision, intent(out) :: qstar
 
       double precision :: esa,Rep,taup,rprime,Tprime,qstr,Shp,Nup,lhv
@@ -4851,7 +4854,7 @@
       ! GHB prevent overflow by limiting term inside exponent:
       qstar = (mw/(ru*dble(Tp)*dble(rhoval)))*esa*dexp( min( 600.0d0 , ((lhv*mw/ru)*((1.0d0/dble(tval))-(1.0d0/dble(Tp)))) + &
               ((2.0d0*mw*surften)/(ru*rhow_dp*dble(radius)*dble(Tp))) - &
-              ((dble(kappa_p)*dble(m_s)*rhow_dp/rho_solute)/(VolP*rhop-dble(m_s))) ) )
+              ((dble(kappa_p)*dble(m_s)*rhow_dp/dble(rho_solute_p))/(VolP*rhop-dble(m_s))) ) )
 
       end subroutine calc_qstar
 
@@ -4867,15 +4870,15 @@
 
       end function kohler_equil_radius
 
-      subroutine lognormal_droplet(rad_init,m_s,kappa_p,randomNumbers)
+      subroutine lognormal_droplet(rad_init,m_s,kappa_p,rho_solute_p,randomNumbers)
       !$acc routine seq
-      use constants, only : rho_solute,pi
+      use constants, only : pi
       use MersenneTwister_mod
 
       implicit none
 
       real, intent(out) :: rad_init,m_s
-      real, intent(in) :: kappa_p
+      real, intent(in) :: kappa_p,rho_solute_p
       type(randomNumberSequence), intent(inout) :: randomNumbers
 
       double precision, parameter :: lognorm_m = -1.7570d0
@@ -4896,7 +4899,7 @@
                                        init_temp,init_rh)
 
       rad_init = real(wet_radius)
-      m_s = real(rho_solute*4.0d0/3.0d0*dble(pi)*dry_radius**3)
+      m_s = real(rho_solute_p*4.0d0/3.0d0*dble(pi)*dry_radius**3)
 
       end subroutine lognormal_droplet
 
@@ -4937,16 +4940,15 @@
 
       end function kohler_equil_radius_dry3
 
-      function crit_radius(m_s,kappa_p,Tf)
+      function crit_radius(m_s,kappa_p,rho_solute_p,Tf)
       !$acc routine seq
-      use constants
-      use input
-      use mpi
+      use constants, only : pi,mw,surften,ru,rhow
+      use input, only : pi_dp
       implicit none
 
       integer :: i,maxidx
       integer, parameter :: N=1000
-      real, intent(in) :: m_s,kappa_p,Tf
+      real, intent(in) :: m_s,kappa_p,rho_solute_p,Tf
       double precision :: Volp,rhop
       real :: radval(N)
       double precision :: SS(N)
@@ -4963,7 +4965,7 @@
         radval(i) = 10**(radstart - (i-1)*dr)
         Volp = (4.0/3.0)*pi*radval(i)**3
         rhop = (m_s + Volp*rhow)/Volp
-        SS(i) = exp((2.0*mw*surften)/(ru*rhow*radval(i)*Tf) - (kappa_p*m_s*rhow/rho_solute)/(Volp*rhop-m_s))
+        SS(i) = exp((2.0*mw*surften)/(ru*rhow*radval(i)*Tf) - (kappa_p*m_s*rhow/rho_solute_p)/(Volp*rhop-m_s))
         if (i > 1) then
            if (SS(i) > SS(maxidx)) then
               maxidx = i 
@@ -4980,7 +4982,7 @@
       use input, only : nparcelsLocal,npvals,myid,ni,nj,ib,ie,jb,je, &
                         prx,pry,prz,pru,prv,prw,prvpx,prvpy,prvpz, &
                         prusgs,prvsgs,prwsgs,prsigsgs, &
-                        prrp,prrp0,prtp,prms,prkap,pract,prtime, &
+                        prrp,prrp0,prtp,prms,prkap,prrhosol,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive,numprocs,nparcelsMax, &
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,dx,dy
@@ -5212,6 +5214,7 @@
             salinity = 0.034
             pdata(np,prms) = salinity*rhow*4.0/3.0*pi*pdata(np,prrp)**3
             pdata(np,prkap) = kappa_s
+            pdata(np,prrhosol) = rho_solute
             pdata(np,prtp) = tsk0   !Set to the SST
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0
@@ -5287,11 +5290,12 @@
       use input, only : nparcelsLocal,npvals,myid,ni,nj,ib,ie,jb,je, &
                         prx,pry,prz,pru,prv,prw,prvpx,prvpy,prvpz, &
                         prusgs,prvsgs,prwsgs,prsigsgs, &
-                        prrp,prrp0,prtp,prms,prkap,pract,prtime, &
+                        prrp,prrp0,prtp,prms,prkap,prrhosol,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive,numprocs,nparcelsMax, &
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
-                        injection_rate_scale
+                        injection_rate_scale, &
+                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
       use constants
       use MersenneTwister_mod
 #ifdef MPI
@@ -5314,10 +5318,11 @@
       type(randomNumberSequence) :: randomNumbers
 
       real :: xrange,yrange,zrange
-      real :: salinity
       real :: my_reintro_tmp  !A temporaray variable to store a real version of my_reintro
-      
+
       integer :: iter,nbin,num_create,j,ierr
+      integer :: isp, isp_try
+      real :: cum_frac, dry_rad_sp
 
       integer :: local_seed
 
@@ -5406,18 +5411,23 @@
             pdata(np,prvsgs) = 0.0
             pdata(np,prwsgs) = 0.0
             pdata(np,prsigsgs) = 0.0
-            pdata(np,prrp) = rad_init
-            pdata(np,prrp0) = rad_init
-            ! KJ Run X: solute mass for NaCl 70nm dry. With rad_init=1.015e-7
-            ! (wet) and rho_solute=2000 (constants.F), m_s = rho_solute *
-            ! (4/3)*pi*r_dry^3 = 3.59e-19 kg. Advisor's formula treats salinity
-            ! as m_s/(rho_w*V_wet), so:
-            !   salinity = m_s / (rho_w * (4/3)*pi*r_wet^3)
-            !            = 3.59e-19 / (1000 * 4.38e-21) = 0.082.
-            ! Mirrors codex-pi (nspecies=1, kappa_sp=1.233, dry_diam_sp=70nm).
-            salinity = 0.082
-            pdata(np,prms) = salinity*rhow*4.0/3.0*pi*pdata(np,prrp)**3
-            pdata(np,prkap) = kappa_s
+            ! Species selection by cumulative fraction
+            rand = getRandomReal(randomNumbers)
+            isp = nspecies
+            cum_frac = 0.0
+            do isp_try=1,nspecies
+               cum_frac = cum_frac + frac_sp(isp_try)
+               if (rand <= cum_frac) then
+                  isp = isp_try
+                  exit
+               end if
+            end do
+            pdata(np,prkap) = kappa_sp(isp)
+            pdata(np,prrhosol) = rho_sp(isp)
+            dry_rad_sp = dry_diam_sp(isp) * 0.5
+            pdata(np,prms) = rho_sp(isp) * (4.0/3.0) * pi * dry_rad_sp**3
+            pdata(np,prrp) = dry_rad_sp
+            pdata(np,prrp0) = dry_rad_sp
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0
@@ -5465,7 +5475,7 @@
       use input, only : nparcelsLocal,npvals,myid,ni,nj,ib,ie,jb,je, &
                         prx,pry,prz,pru,prv,prw,prvpx,prvpy,prvpz, &
                         prusgs,prvsgs,prwsgs,prsigsgs, &
-                        prrp,prrp0,prtp,prms,prkap,pract,prtime, &
+                        prrp,prrp0,prtp,prms,prkap,prrhosol,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive, &
                         drop_mult,pi_sp,maxz
       use constants
@@ -5542,7 +5552,8 @@
             pdata(np,prwsgs) = 0.0
             pdata(np,prsigsgs) = 0.0
             pdata(np,prkap) = 0.6
-            call lognormal_droplet(pdata(np,prrp),pdata(np,prms),pdata(np,prkap),randomNumbers)
+            pdata(np,prrhosol) = 2160.0
+            call lognormal_droplet(pdata(np,prrp),pdata(np,prms),pdata(np,prkap),pdata(np,prrhosol),randomNumbers)
             pdata(np,prrp0) = pdata(np,prrp)
             pdata(np,prtp) = 290.0
             pdata(np,prmult) = drop_mult
