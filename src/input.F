@@ -85,7 +85,7 @@
               prpidx,prprocidx,                                               &
               nql1,nql2,nqs1,nqs2,nnc1,nnc2,nvl1,nvl2,nzl1,nzl2,              &
               nbudget,budrain,cm1setup,testcase,                              &
-              adapt_dt,irst,rstnum,iconly,                                    &
+              adapt_dt,irst,rstnum,ifields,iconly,                            &
               hadvordrs,vadvordrs,hadvordrv,vadvordrv,pdscheme,apmasscon,     &
               advwenos,advwenov,weno_order,                                   &
               idiff,mdiff,difforder,imoist,sgsmodel,horizturb,                &
@@ -286,7 +286,7 @@
       namelist /param1/ dx,dy,dz,dtl,timax,run_time,                    &
                         tapfrq,rstfrq,statfrq,prclfrq
       namelist /param2/                                                 &
-          cm1setup,testcase,adapt_dt,irst,rstnum,iconly,                &
+          cm1setup,testcase,adapt_dt,irst,rstnum,ifields,iconly,        &
           hadvordrs,vadvordrs,hadvordrv,vadvordrv,                      &
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
