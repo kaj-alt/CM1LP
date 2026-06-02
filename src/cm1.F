@@ -278,8 +278,6 @@ end module cuda_rt
       double precision :: adaptmovetim
       integer :: mvrec,nwritemv
 
-      integer :: ifields
-
 #ifdef MPI
       integer :: reqs,rc,ii,jj,id,itmp1,itmp2,jtmp1,jtmp2
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -2514,7 +2512,6 @@ end module cuda_rt
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
-      ifields = 0
       IF (ifields.eq.1) THEN
 
          rho = 0.0
