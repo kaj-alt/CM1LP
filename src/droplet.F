@@ -839,10 +839,12 @@
 !----------------------------------------------------------------------
 ! Final thing: Inject droplets which will be active on the next call of droplet_driver
 ! Requires inputting the current 10-meter wind speed
+   ! SSGF u10 calc: hurricane (testcase 15) only. For testcase 16 the s10
+   ! array is never populated (sfcmodel=0, isfcflx=0) and summing it gives NaN.
    if ( .not. use_wall_bc .and. testcase.ne.16 ) then
       u10_ssgf = 0.0
       ! If _VERIFY macro is enabled than perform the following sum on
-      ! the CPU 
+      ! the CPU
 #ifdef _VERIFY
       !$acc update host(s10)
 #else
@@ -858,7 +860,7 @@
       call mpi_allreduce(mpi_in_place,u10_ssgf,1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
 #endif
       u10_ssgf = u10_ssgf/dble(nx*ny)
-
+   end if  ! end SSGF u10 calc
 
       doinject = 0
 
@@ -943,11 +945,10 @@
       call mpi_allreduce(nparcelsLocalActive,np_tmp,1,mpi_integer8, &
                          mpi_sum,mpi_comm_world,ierr)
 #endif
-      if (myid==0) then 
+      if (myid==0) then
          !write(*,'(a8,3i)')  'DHR1:',myid,np_tmp,nparcelsLocalActive
          write(*,'(a18,i)')  'Total particles:',np_tmp
       end if
-   end if  ! end of "if use_wall_bc" statement
 
    if(timestats.ge.1) time_droplet_inject=time_droplet_inject+mytime()
 
