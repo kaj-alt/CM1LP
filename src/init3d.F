@@ -84,7 +84,8 @@
       use module_mp_nssl_2mom, only: ccn, lccn
       use poiss_module
       use parcel_module , only : getparcelzs
-      use droplet_module, only: initialize_droplet_histograms,particle_seed,ngidx,lognormal_droplet
+      use droplet_module, only: initialize_droplet_histograms,particle_seed,ngidx,lognormal_droplet, &
+                                kohler_equil_radius
 #ifdef MPI
       use mpi
 #endif
@@ -172,6 +173,10 @@
 
       real :: salinity
       integer :: values(8)
+
+      ! Pi-chamber (testcase=16) starter-particle locals: dry radius, Kohler
+      ! equilibrium wet radius at init_hydration_rh_frac, RH in dp.
+      double precision :: dry_rad_dp, wet_rad_dp, rh_dp
 
       ! Note:  By default, CM1 uses the same set of psuedorandom numbers 
       !        every time it is called.  To use truly random perturbations 
@@ -486,6 +491,27 @@
                 pdata(i,prkap) = 0.6
                 pdata(i,prrhosol) = rho_solute
                 call lognormal_droplet(pdata(i,prrp),pdata(i,prms),pdata(i,prkap),pdata(i,prrhosol),randomNumbers)
+                pdata(i,prrp0) = pdata(i,prrp)
+             else if (testcase.eq.16) then
+                ! Pi chamber: starter particle uses species-1 namelist params
+                ! (kappa_sp, rho_sp, dry_diam_sp). Solute mass is computed from
+                ! the dry radius. If init_hydration_rh_frac >= 0, the initial
+                ! wet radius is the Kohler-equilibrium radius at that RH (same
+                ! convention as droplet_injection_pi); otherwise it is the dry
+                ! radius. This replaces the sea-spray default (2 um wet, 6.6%
+                ! salinity, kappa_s/rho_solute from constants.F) that would
+                ! otherwise dump a hot 2 um drop into the chamber at t=0.
+                pdata(i,prkap) = kappa_sp(1)
+                pdata(i,prrhosol) = rho_sp(1)
+                dry_rad_dp = 0.5d0*dble(dry_diam_sp(1))
+                pdata(i,prms) = real(dble(rho_sp(1))*(4.0d0/3.0d0)*dble(pi)*dry_rad_dp**3)
+                if (init_hydration_rh_frac .ge. 0.0) then
+                   rh_dp = min(1.0d0,max(0.0d0,dble(init_hydration_rh_frac)))
+                   wet_rad_dp = kohler_equil_radius(dry_rad_dp,dble(kappa_sp(1)),290.0d0,rh_dp)
+                   pdata(i,prrp) = real(max(dry_rad_dp,wet_rad_dp))
+                else
+                   pdata(i,prrp) = real(dry_rad_dp)
+                end if
                 pdata(i,prrp0) = pdata(i,prrp)
              else
                 !Droplet size (radius)
