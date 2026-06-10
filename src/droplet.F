@@ -4929,8 +4929,10 @@
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive,numprocs,nparcelsMax, &
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
-                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
+                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,max_species, &
+                        init_hydration_rh_frac
       use constants
+      use cm1libs , only : deslf
       use MersenneTwister_mod
 #ifdef MPI
       use mpi
@@ -4960,6 +4962,13 @@
 
       integer :: local_seed
 
+      ! Per-species injection-time wet radius (Kohler equilibrium at init_hydration_rh_frac).
+      ! Precomputed on host once per call, then used inside the GPU parallel loop below.
+      real :: wet_rad_sp(max_species)
+      real :: dry_rad_pre, m_s_pre, qval_init, rh_frac
+      double precision :: rad_guess, esa_dp
+      integer :: mflag
+
       my_reintro_tmp = 0.01*(1./60.)*(10.**6.)*time_since_inject*4 !total for a 4m^3 vol chamber
 
 #ifdef MPI
@@ -4977,6 +4986,25 @@
       xrange = xf(ni+1)-xf(1)
       yrange = yf(nj+1)-yf(1)
       zrange = nz*dz/2.0
+
+      ! Per-species wet radius at injection.
+      ! init_hydration_rh_frac < 0 keeps the legacy dry-injection behaviour;
+      ! 0 <= rh_frac <= 1 solves the Kohler equilibrium for each species and uses
+      ! the resulting wet radius as the initial droplet radius.
+      do isp_try = 1, nspecies
+         dry_rad_pre = dry_diam_sp(isp_try) * 0.5
+         wet_rad_sp(isp_try) = dry_rad_pre
+         if (init_hydration_rh_frac .ge. 0.0) then
+            rh_frac = min(1.0, max(0.0, init_hydration_rh_frac))
+            esa_dp = deslf(101325.0d0, 290.0d0)
+            qval_init = real(dble(rh_frac)*(mw/(ru*290.0d0))*esa_dp)
+            m_s_pre = rho_sp(isp_try) * (4.0/3.0) * pi * dry_rad_pre**3
+            call rad_solver2(rad_guess, mflag, 101325.0, 1.0, 290.0, qval_init, &
+                             290.0, m_s_pre, kappa_sp(isp_try), &
+                             dble(rho_sp(isp_try)), dry_rad_pre, 0)
+            wet_rad_sp(isp_try) = max(dry_rad_pre, real(rad_guess))
+         end if
+      end do
 
       !Update the cumulative injection statistics
       num_injected = num_injected + real(my_reintro)*drop_mult
@@ -5005,7 +5033,7 @@
                                          ' superdroplets=',total_reintro
          end if
 
-         !$acc data create(randomNumbers,randomNumbers%state)
+         !$acc data create(randomNumbers,randomNumbers%state) copyin(wet_rad_sp)
          !$acc update device(ngidx)
          !$acc parallel loop gang vector default(present) reduction(+:mass_injected,eng_injected,m1_injected,m2_injected) private(randomNumbers,local_seed)
          do j=1,my_reintro
@@ -5054,8 +5082,8 @@
             pdata(np,prrhosol) = rho_sp(isp)
             dry_rad_sp = dry_diam_sp(isp) * 0.5
             pdata(np,prms) = rho_sp(isp) * (4.0/3.0) * pi * dry_rad_sp**3
-            pdata(np,prrp) = dry_rad_sp
-            pdata(np,prrp0) = dry_rad_sp
+            pdata(np,prrp) = wet_rad_sp(isp)
+            pdata(np,prrp0) = wet_rad_sp(isp)
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0

@@ -320,6 +320,7 @@
       call bcast_real(rho_sp,1,max_species)
       call bcast_real(dry_diam_sp,1,max_species)
       call bcast_real(frac_sp,1,max_species)
+      call bcast_real(init_hydration_rh_frac)
       if(dowr) then
         frac_sum = 0.0
         do i=1,nspecies
@@ -329,7 +330,7 @@
           write(*,*) 'WARNING: frac_sp does not sum to 1.0; sum=',frac_sum
         end if
       end if
-      !$acc update device(nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp)
+      !$acc update device(nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2734,6 +2735,8 @@
             ' dry_diam=',dry_diam_sp(i),' frac=',frac_sp(i)
         end do
       end if
+      if(dowr) write(outfile,*) 'init_hydration_rh_frac=',init_hydration_rh_frac, &
+                                ' (<0 = dry injection; 0..1 = Kohler-equilibrium wet radius at that RH)'
       if(dowr) write(outfile,*) 'drop_sgs_opt=',drop_sgs_opt
       if(dowr) write(outfile,*) 'humidity_mode=',humidity_mode,' (1=domain sink, 2=saturated sidewalls)'
       if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink,' (kg/kg/s; active only when humidity_mode==1)'

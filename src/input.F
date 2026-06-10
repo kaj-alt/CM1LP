@@ -228,12 +228,13 @@
       real :: rho_sp(max_species) = (/ 2160.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: dry_diam_sp(max_species) = (/ 70.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: frac_sp(max_species) = (/ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      real :: init_hydration_rh_frac = -1.0
 
       !$acc declare create (dx,dy,dz,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time,humidity_sink)
-      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
 
 !-----------------------------------------------------------------------
 
@@ -357,7 +358,8 @@
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,pi_grav, &
               humidity_mode,humidity_sink, &
-              nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
+              nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp, &
+              init_hydration_rh_frac
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &
