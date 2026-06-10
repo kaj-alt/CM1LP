@@ -310,6 +310,8 @@ contains
      if(Depart(ise) .gt. 0) &
         call packDroplets(ise, Depart, ptrDepart, Depart_ind, pdata, droplet_se1)
 
+     !$acc wait
+
      if(timestats.ge.1) time_dropC4b=time_dropC4b+mytime()
 
 
@@ -487,8 +489,10 @@ contains
           write(*,*) "Stop the program..."
           call stopcm1
        end if
+       !$acc wait
        n = n + 1
      end do
+     !$acc wait
      if(timestats.ge.1) time_dropC4d=time_dropC4d+mytime()
 
     ! make sure that all the non-blocking MPI send operations are complete
@@ -802,7 +806,9 @@ contains
         !$acc data create(Cidx) present(pdata_neighbor)
 
         ptrdir = ptrDepart(dir)
+        !$acc wait
         Cidx = count_prefix(mask=(pdata_neighbor.eq.dir),exclusive=.true.)
+        !$acc wait
 
         !$acc parallel loop gang vector default(present)
         do np=1,nparcelsLocalActive-1
