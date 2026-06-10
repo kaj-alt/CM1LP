@@ -166,6 +166,7 @@
       integer(i8) :: nparcelsInit,nparcelsMax,nparcelsRest,nparcelsLocal, &
                      nparcelsLocalActive
       integer :: drop_sgs_opt = 0
+      integer :: humidity_mode = 1   ! 1=domain vapor sink (testcase 16), 2=saturated sidewall BCs (sink skipped)
 
       !$acc declare create (ib,ie,jb,je,kb,ke,numq,nparcelsInit,npvals,nx,ny,nz, &
       !$acc       axisymm,terrain_flag,ni,nj,nip1,njp1,nk,nkp1,nkm1,imoist,   &
@@ -175,7 +176,7 @@
       !$acc                 prx,pry,prz,prsig,ngxy,ngz,ptype,pru,prv,prw,     &
       !$acc                 ibw,ibe,ibs,ibn,ibc,iec,jbc,jec,kbc,kec,          &
       !$acc                 ibt,iet,jbt,jet,kbt,ket,two_way_coupling,         &
-      !$acc                 drop_evap,drop_traj,drop_sgs_opt,                 &
+      !$acc                 drop_evap,drop_traj,drop_sgs_opt,humidity_mode,   &
       !$acc                 prt,prqv,prprs,prrho,nparcelsLocal,               &
       !$acc                 mywest,myeast,mynorth,mysouth,myne,myse,mysw,mynw,&
       !$acc                 prmult,pract,prtime,prth,prpt1,prpt2,prq1,prq2,   &
@@ -219,6 +220,7 @@
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
            drop_inject_elapse,drop_inject_time
       real :: pi_grav = 9.81   ! effective gravity for Pi Chamber testcase (m/s^2); controls Ra
+      real :: humidity_sink = 6.2e-6   ! kg/kg/s; domain vapor sink rate, applied only when humidity_mode==1
 
       integer, parameter :: max_species = 8
       integer :: nspecies = 1
@@ -230,7 +232,7 @@
       !$acc declare create (dx,dy,dz,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
-      !$acc                 drop_inject_elapse,drop_inject_time)
+      !$acc                 drop_inject_elapse,drop_inject_time,humidity_sink)
       !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies)
 
 !-----------------------------------------------------------------------
@@ -354,6 +356,7 @@
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,pi_grav, &
+              humidity_mode,humidity_sink, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
       namelist /param14/                                                      &
               dodomaindiag,diagfrq

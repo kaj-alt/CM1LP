@@ -307,11 +307,14 @@
       call bcast_int(drop_evap) ! DEVICE
       call bcast_int(drop_traj) ! DEVICE
       call bcast_int(drop_sgs_opt) ! DEVICE
+      call bcast_int(humidity_mode) ! DEVICE
       call bcast_int(nparcelsMax)
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
       call bcast_real(pi_grav)
+      call bcast_real(humidity_sink) ! DEVICE
+      !$acc update device(humidity_mode,humidity_sink)
       call bcast_int(nspecies)
       call bcast_real(kappa_sp,1,max_species)
       call bcast_real(rho_sp,1,max_species)
@@ -2732,6 +2735,8 @@
         end do
       end if
       if(dowr) write(outfile,*) 'drop_sgs_opt=',drop_sgs_opt
+      if(dowr) write(outfile,*) 'humidity_mode=',humidity_mode,' (1=domain sink, 2=saturated sidewalls)'
+      if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink,' (kg/kg/s; active only when humidity_mode==1)'
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) 'kdiff2    =',kdiff2
       if(dowr) write(outfile,*) 'kdiff6    =',kdiff6

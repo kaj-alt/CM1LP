@@ -162,6 +162,7 @@
           kd_turb,ud_rdamp,vd_rdamp,wd_rdamp,td_rdamp,td_hediff,td_vediff,qd_hediff,qd_vediff, &
           td_diss,td_rad,td_pbl,td_hturb,td_vturb,qd_hturb,qd_vturb,ud_pbl,vd_pbl,qd_pbl, &
           td_nudge,qd_nudge,prcl_droplet,ntwk,pdcomp,nbc,ebc,sbc,wbc,two_way_coupling, &
+          humidity_mode,humidity_sink, &
           output_rain,output_sws,output_svs,output_sps,output_srs,output_sgs,output_sus,output_shs
 
       use constants
@@ -1053,11 +1054,11 @@
               v3d(i,j,k)=v3d(i,j,k)+dt_dropsub*dpten(i,j,k,4)
               w3d(i,j,k)=w3d(i,j,k)+dt_dropsub*dpten(i,j,k,5)
           
-	      !For Pi chamber DNS with periodic sidewalls, need a vapor sink
-	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
-	      if (testcase.eq.16) then
+	      ! Mode 1: Pi-chamber periodic forcing via a domain-wide vapor sink.
+	      ! Mode 2: saturated sidewall BCs control RH (turbtend.F); sink skipped.
+	      if (testcase.eq.16 .and. humidity_mode.eq.1) then
                  !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*6.2e-6
+                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*humidity_sink
 	      end if
             enddo
             enddo
