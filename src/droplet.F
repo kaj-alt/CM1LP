@@ -196,8 +196,9 @@
 #endif
       logical :: msk(nparcelsLocal)
 
-      logical, parameter :: verbose=.false.
+      logical, parameter :: verbose=.true.
       integer :: errcode
+      integer :: n_bad_prrp, n_bad_prmult, n_bad_pract
       integer(i8) :: nactive_new
       integer :: badActive, firstBad, lastBad
       integer :: badCompact, numArrive_dbg, badArrive, indx
@@ -391,16 +392,28 @@
 
 
     !JMD WARNING: Loop does not yet match CPU version.
+    n_bad_prrp = 0
+    n_bad_prmult = 0
+    n_bad_pract = 0
     !$acc parallel default(present)
     !$acc loop gang vector reduction(+:num_fallout) reduction(max:errcode) &
+    !$acc reduction(+:n_bad_prrp,n_bad_prmult,n_bad_pract) &
     !$acc reduction(+:numDepartN,numDepartS,numDepartE,numDepartW) &
     !$acc reduction(+:numDepartNW,numDepartSW,numDepartNE,numDepartSE) &
     !$acc reduction(+:num_destroyed,mass_destroyed,mass_evap,mass_dpten,eng_destroyed,m1_destroyed,m2_destroyed,mass_reentry,eng_reentry,m1_reentry,m2_reentry)
     nploop:  &
     DO np=1,nparcelsLocalActive
-      if (pdata(np,prrp).le.0.0 .or. pdata(np,prmult).le.0.0 .or. &
-          pdata(np,pract).lt.0.0) then
+      if (pdata(np,prrp).le.0.0) then
+        errcode = max(errcode,54321)
+        n_bad_prrp = n_bad_prrp + 1
+      endif
+      if (pdata(np,prmult).le.0.0) then
+        errcode = max(errcode,54322)
+        n_bad_prmult = n_bad_prmult + 1
+      endif
+      if (pdata(np,pract).lt.0.0) then
         errcode = max(errcode,54323)
+        n_bad_pract = n_bad_pract + 1
       endif
 
 
@@ -569,7 +582,13 @@
     END DO nploop
     !$acc end parallel
     !$acc wait
-    if (errcode .gt. 0) then 
+    if (errcode .gt. 0) then
+       print *,'BE_VALIDATOR_FAIL myid=', myid, &
+               ' errcode=', errcode, &
+               ' n_bad_prrp=', n_bad_prrp, &
+               ' n_bad_prmult=', n_bad_prmult, &
+               ' n_bad_pract=', n_bad_pract, &
+               ' nparcelsLocalActive=', nparcelsLocalActive
        stop 'FATAL error occurred in the index search BE_integration'
     end if
 
