@@ -779,10 +779,23 @@
     ! array (holes_ind) for arriving droplets
     call setupIndexPointers(Arrive,ptrArrive)
 
-    ! number of holes in "pdata" to fill after the arrival droplets have
-    ! been assigned a location
-    numBackfill = sum(Depart) + num_fallout - sum(Arrive) 
     nactive_new = nparcelsLocalActive + sum(Arrive) - sum(Depart) - num_fallout
+    numArrive_dbg = sum(Arrive)
+
+    ! Only holes inside the new active prefix need donor backfill.
+    ! Holes above nactive_new become inactive tail slots.
+    numBackfill = 0
+#ifdef _OPENACC
+    !$acc parallel loop gang vector default(present) reduction(+:numBackfill)
+#endif
+    do n = numArrive_dbg + 1, numHoles
+      if (int(holes_ind(n),i8) .le. nactive_new) then
+        numBackfill = numBackfill + 1
+      endif
+    enddo
+#ifdef _OPENACC
+    !$acc end parallel
+#endif
     !$acc wait
 
     if (nactive_new .lt. 0_i8 .or. &
@@ -966,7 +979,8 @@
 
     ! On the GPU, compress the new "pdata" to make sure that all the active
     !     droplets are contiguous (no "holes" between "pdata" slots)
-    call makeContiguous(Depart,Arrive,num_fallout,holes_ind,backfill_ind,pdata,pdata_locind)
+    call makeContiguous(Depart,Arrive,num_fallout,numBackfill, &
+                         holes_ind,backfill_ind,pdata,pdata_locind)
     !$acc wait
 
     nactive_new = nparcelsLocalActive + sum(Arrive) - sum(Depart) - num_fallout
@@ -1341,6 +1355,7 @@
       use input, only : ib,ie,jb,je,kb,ke,ibl,iel,jbl,jel,numq,ni,nj, &
           nk,npvals,axisymm,terrain_flag,nx,ny,nparcelsLocal, &
           nparcelsLocalActive,prx,pry,prz,prsig,pru,prv,prw, &
+          prusgs,prvsgs,prwsgs, &
           prt,prqv,prprs,prrho,prrp,prtp,drop_inject_elapse,drop_inject_time, &
           testcase,myid,timestats,time_droplet_inject,mytime,ierr
       use constants
@@ -1378,7 +1393,8 @@
       real :: radmin,radmax,Tpmin,Tpmax
       real :: qfmin,qfmax,Tfmin,Tfmax
       real :: prsmin,prsmax,rhomin,rhomax
-      real :: minvals(6),maxvals(6)
+      real :: usgsmin,usgsmax,vsgsmin,vsgsmax,wsgsmin,wsgsmax
+      real :: minvals(9),maxvals(9)
 
       !----------------------------------------------------------------------
       ! Final thing: Inject droplets which will be active on the next call of droplet_driver
@@ -1509,10 +1525,16 @@
       prsmax = -huge(1.0)
       rhomin = huge(1.0)
       rhomax = -huge(1.0)
+      usgsmin = huge(1.0)
+      usgsmax = -huge(1.0)
+      vsgsmin = huge(1.0)
+      vsgsmax = -huge(1.0)
+      wsgsmin = huge(1.0)
+      wsgsmax = -huge(1.0)
 
       !$acc parallel loop gang vector default(present) &
-      !$acc          reduction(min:radmin,Tpmin,qfmin,Tfmin,prsmin,rhomin) &
-      !$acc          reduction(max:radmax,Tpmax,qfmax,Tfmax,prsmax,rhomax)
+      !$acc          reduction(min:radmin,Tpmin,qfmin,Tfmin,prsmin,rhomin,usgsmin,vsgsmin,wsgsmin) &
+      !$acc          reduction(max:radmax,Tpmax,qfmax,Tfmax,prsmax,rhomax,usgsmax,vsgsmax,wsgsmax)
       do np=1,nparcelsLocalActive
          radmin = min(radmin,pdata(np,prrp))
          radmax = max(radmax,pdata(np,prrp))
@@ -1526,28 +1548,40 @@
          prsmax = max(prsmax,pdata(np,prprs))
          rhomin = min(rhomin,pdata(np,prrho))
          rhomax = max(rhomax,pdata(np,prrho))
+         usgsmin = min(usgsmin,pdata(np,prusgs))
+         usgsmax = max(usgsmax,pdata(np,prusgs))
+         vsgsmin = min(vsgsmin,pdata(np,prvsgs))
+         vsgsmax = max(vsgsmax,pdata(np,prvsgs))
+         wsgsmin = min(wsgsmin,pdata(np,prwsgs))
+         wsgsmax = max(wsgsmax,pdata(np,prwsgs))
       end do
       !$acc end parallel
       !$acc wait
 
 #ifdef MPI
       call mpi_allreduce(mpi_in_place,np_tmp,1,mpi_integer8,mpi_sum,mpi_comm_world,ierr)
-      minvals = (/ radmin,Tpmin,qfmin,Tfmin,prsmin,rhomin /)
-      maxvals = (/ radmax,Tpmax,qfmax,Tfmax,prsmax,rhomax /)
-      call mpi_allreduce(mpi_in_place,minvals,6,mpi_real,mpi_min,mpi_comm_world,ierr)
-      call mpi_allreduce(mpi_in_place,maxvals,6,mpi_real,mpi_max,mpi_comm_world,ierr)
+      minvals = (/ radmin,Tpmin,qfmin,Tfmin,prsmin,rhomin,usgsmin,vsgsmin,wsgsmin /)
+      maxvals = (/ radmax,Tpmax,qfmax,Tfmax,prsmax,rhomax,usgsmax,vsgsmax,wsgsmax /)
+      call mpi_allreduce(mpi_in_place,minvals,9,mpi_real,mpi_min,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,maxvals,9,mpi_real,mpi_max,mpi_comm_world,ierr)
       radmin = minvals(1)
       Tpmin = minvals(2)
       qfmin = minvals(3)
       Tfmin = minvals(4)
       prsmin = minvals(5)
       rhomin = minvals(6)
+      usgsmin = minvals(7)
+      vsgsmin = minvals(8)
+      wsgsmin = minvals(9)
       radmax = maxvals(1)
       Tpmax = maxvals(2)
       qfmax = maxvals(3)
       Tfmax = maxvals(4)
       prsmax = maxvals(5)
       rhomax = maxvals(6)
+      usgsmax = maxvals(7)
+      vsgsmax = maxvals(8)
+      wsgsmax = maxvals(9)
 #endif
       if (np_tmp.le.0_i8) then
          radmin = 0.0
@@ -1562,17 +1596,26 @@
          prsmax = 0.0
          rhomin = 0.0
          rhomax = 0.0
+         usgsmin = 0.0
+         usgsmax = 0.0
+         vsgsmin = 0.0
+         vsgsmax = 0.0
+         wsgsmin = 0.0
+         wsgsmax = 0.0
       end if
 
       if (myid==0) then
          !write(*,'(a8,3i)')  'DHR1:',myid,np_tmp,nparcelsLocalActive
-         write(*,'(a18,i18,12(a,1pe15.6))') 'Total particles:',np_tmp, &
+         write(*,'(a18,i18,18(a,1pe15.6))') 'Total particles:',np_tmp, &
                                             ' rmin=',radmin,' rmax=',radmax, &
                                             ' Tpmin=',Tpmin,' Tpmax=',Tpmax, &
                                             ' qfmin=',qfmin,' qfmax=',qfmax, &
                                             ' Tfmin=',Tfmin,' Tfmax=',Tfmax, &
                                             ' prsmin=',prsmin,' prsmax=',prsmax, &
-                                            ' rhomin=',rhomin,' rhomax=',rhomax
+                                            ' rhomin=',rhomin,' rhomax=',rhomax, &
+                                            ' usgsmin=',usgsmin,' usgsmax=',usgsmax, &
+                                            ' vsgsmin=',vsgsmin,' vsgsmax=',vsgsmax, &
+                                            ' wsgsmin=',wsgsmin,' wsgsmax=',wsgsmax
       end if
 
       if(timestats.ge.1) time_droplet_inject=time_droplet_inject+mytime()
