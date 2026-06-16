@@ -198,7 +198,7 @@
 
       logical, parameter :: verbose=.true.
       integer :: errcode
-      integer :: n_bad_prrp, n_bad_prmult, n_bad_pract
+      integer :: n_bad_prrp, n_bad_prmult, n_bad_pract, n_bad_nanvel
       integer(i8) :: nactive_new
       integer :: badActive, firstBad, lastBad
       integer :: badCompact, numArrive_dbg, badArrive, indx
@@ -395,9 +395,10 @@
     n_bad_prrp = 0
     n_bad_prmult = 0
     n_bad_pract = 0
+    n_bad_nanvel = 0
     !$acc parallel default(present)
     !$acc loop gang vector reduction(+:num_fallout) reduction(max:errcode) &
-    !$acc reduction(+:n_bad_prrp,n_bad_prmult,n_bad_pract) &
+    !$acc reduction(+:n_bad_prrp,n_bad_prmult,n_bad_pract,n_bad_nanvel) &
     !$acc reduction(+:numDepartN,numDepartS,numDepartE,numDepartW) &
     !$acc reduction(+:numDepartNW,numDepartSW,numDepartNE,numDepartSE) &
     !$acc reduction(+:num_destroyed,mass_destroyed,mass_evap,mass_dpten,eng_destroyed,m1_destroyed,m2_destroyed,mass_reentry,eng_reentry,m1_reentry,m2_reentry)
@@ -526,7 +527,7 @@
                            epssgsval,lsgsval, &
                            rhoval,prsval,tval,Nup,rhop0,taup0,rp0, &
                            part_grav1,part_grav2,part_grav3,debug, &
-                           neighbor,num_fallout,errcode)
+                           neighbor,num_fallout,errcode,n_bad_nanvel)
 
 #ifdef MPI
       if(neighbor .eq. mynorth) then 
@@ -588,6 +589,7 @@
                ' n_bad_prrp=', n_bad_prrp, &
                ' n_bad_prmult=', n_bad_prmult, &
                ' n_bad_pract=', n_bad_pract, &
+               ' n_bad_nanvel=', n_bad_nanvel, &
                ' nparcelsLocalActive=', nparcelsLocalActive
        stop 'FATAL error occurred in the index search BE_integration'
     end if
@@ -1632,7 +1634,7 @@
                              epssgsval,lsgsval, &
                              rhoval,prsval,tval,Nup,rhop0,taup0,rp0, &
                              part_grav1,part_grav2,part_grav3,debug, &
-                             neighbor,num_fallout,errcode)
+                             neighbor,num_fallout,errcode,n_bad_nanvel)
 
       !$acc routine seq
 
@@ -1672,6 +1674,7 @@
                                         ! stays after this time step 
       integer, intent(inout) :: num_fallout
       integer, intent(inout) :: errcode
+      integer, intent(inout) :: n_bad_nanvel
 
       real :: dt2
       real :: xrhs1,xrhs2,xrhs3,vrhs1,vrhs2,vrhs3
@@ -1765,7 +1768,8 @@
       if (pdata(np,prvpx).ne.pdata(np,prvpx) .or. &
           pdata(np,prvpy).ne.pdata(np,prvpy) .or. &
           pdata(np,prvpz).ne.pdata(np,prvpz)) then
-        errcode = max(errcode,54322)
+        errcode = max(errcode,54324)
+        n_bad_nanvel = n_bad_nanvel + 1
       endif
 
       !Nonlinear solver for the radius and temperature:
