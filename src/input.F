@@ -229,12 +229,19 @@
       real :: dry_diam_sp(max_species) = (/ 70.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: frac_sp(max_species) = (/ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: init_hydration_rh_frac = -1.0
+      ! Scale factor on the hardcoded Pi-chamber injection rate (droplet.F:5150).
+      ! 1.0 (default) preserves baseline 0.01 #/cc/min. Increase to inject more
+      ! superdroplets per second (with proportionally smaller drop_mult to hold
+      ! the total physical injection rate constant, spreading the per-cell
+      ! vapor sink across more grid cells).
+      real :: injection_rate_scale = 1.0
 
       !$acc declare create (dx,dy,dz,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time,humidity_sink)
-      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac, &
+      !$acc                 injection_rate_scale)
 
 !-----------------------------------------------------------------------
 
@@ -359,7 +366,7 @@
 	      drop_evap,drop_traj,drop_sgs_opt,pi_grav, &
               humidity_mode,humidity_sink, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp, &
-              init_hydration_rh_frac
+              init_hydration_rh_frac,injection_rate_scale
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &

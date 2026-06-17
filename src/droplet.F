@@ -5108,7 +5108,7 @@
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
                         nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,max_species, &
-                        init_hydration_rh_frac
+                        init_hydration_rh_frac,injection_rate_scale
       use constants
       use cm1libs , only : deslf
       use MersenneTwister_mod
@@ -5147,7 +5147,7 @@
       double precision :: rad_guess, esa_dp
       integer :: mflag
 
-      my_reintro_tmp = 0.01*(1./60.)*(10.**6.)*time_since_inject*4 !total for a 4m^3 vol chamber
+      my_reintro_tmp = 0.01*(1./60.)*(10.**6.)*time_since_inject*4*injection_rate_scale !total for a 4m^3 vol chamber
 
 #ifdef MPI
       my_reintro = floor(my_reintro_tmp/sngl(numprocs))
