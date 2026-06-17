@@ -400,6 +400,91 @@
     n_bad_fluidnan = 0
     n_bad_prevvel = 0
     n_bad_taupnan = 0
+
+    ! ---- v5 FLUID_DIAG: scan device fluid arrays before BE entry ----
+    ! Per-rank reduction over ua/va/wa to detect NaN onset on the device.
+    ! v4 showed n_bad_fluidnan == n_bad_nanvel: parcels see NaN fluid velocity
+    ! at step 433. This block tells us whether the device-resident u/v/w arrays
+    ! themselves carry NaN (solver origin) and bounds the k-range where they sit.
+    block
+      integer :: ii, jj, kk
+      integer :: nan_u, nan_v, nan_w
+      integer :: nan_k_lo, nan_k_hi
+      real :: umin, umax, vmin, vmax, wmin, wmax
+
+      nan_u = 0
+      nan_v = 0
+      nan_w = 0
+      nan_k_lo =  huge(0)
+      nan_k_hi = -huge(0)
+      umin =  huge(0.0); umax = -huge(0.0)
+      vmin =  huge(0.0); vmax = -huge(0.0)
+      wmin =  huge(0.0); wmax = -huge(0.0)
+
+      !$acc parallel loop collapse(3) default(present)                  &
+      !$acc   reduction(+:nan_u) reduction(min:umin) reduction(max:umax) &
+      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
+      do kk = kb, ke
+        do jj = jb, je
+          do ii = ib, ie+1
+            if (ua(ii,jj,kk) .ne. ua(ii,jj,kk)) then
+              nan_u = nan_u + 1
+              if (kk < nan_k_lo) nan_k_lo = kk
+              if (kk > nan_k_hi) nan_k_hi = kk
+            else
+              if (ua(ii,jj,kk) < umin) umin = ua(ii,jj,kk)
+              if (ua(ii,jj,kk) > umax) umax = ua(ii,jj,kk)
+            endif
+          end do
+        end do
+      end do
+
+      !$acc parallel loop collapse(3) default(present)                  &
+      !$acc   reduction(+:nan_v) reduction(min:vmin) reduction(max:vmax) &
+      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
+      do kk = kb, ke
+        do jj = jb, je+1
+          do ii = ib, ie
+            if (va(ii,jj,kk) .ne. va(ii,jj,kk)) then
+              nan_v = nan_v + 1
+              if (kk < nan_k_lo) nan_k_lo = kk
+              if (kk > nan_k_hi) nan_k_hi = kk
+            else
+              if (va(ii,jj,kk) < vmin) vmin = va(ii,jj,kk)
+              if (va(ii,jj,kk) > vmax) vmax = va(ii,jj,kk)
+            endif
+          end do
+        end do
+      end do
+
+      !$acc parallel loop collapse(3) default(present)                  &
+      !$acc   reduction(+:nan_w) reduction(min:wmin) reduction(max:wmax) &
+      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
+      do kk = kb, ke+1
+        do jj = jb, je
+          do ii = ib, ie
+            if (wa(ii,jj,kk) .ne. wa(ii,jj,kk)) then
+              nan_w = nan_w + 1
+              if (kk < nan_k_lo) nan_k_lo = kk
+              if (kk > nan_k_hi) nan_k_hi = kk
+            else
+              if (wa(ii,jj,kk) < wmin) wmin = wa(ii,jj,kk)
+              if (wa(ii,jj,kk) > wmax) wmax = wa(ii,jj,kk)
+            endif
+          end do
+        end do
+      end do
+
+      write(6,*) ' FLUID_DIAG nstep=', nstep, ' mtime=', real(mtime), &
+                 ' myid=', myid, &
+                 ' nan_u=', nan_u, ' nan_v=', nan_v, ' nan_w=', nan_w, &
+                 ' nan_k_lo=', nan_k_lo, ' nan_k_hi=', nan_k_hi, &
+                 ' umin=', umin, ' umax=', umax, &
+                 ' vmin=', vmin, ' vmax=', vmax, &
+                 ' wmin=', wmin, ' wmax=', wmax
+    end block
+    ! ---- end v5 FLUID_DIAG ----
+
     !$acc parallel default(present)
     !$acc loop gang vector reduction(+:num_fallout) reduction(max:errcode) &
     !$acc reduction(+:n_bad_prrp,n_bad_prmult,n_bad_pract,n_bad_nanvel) &
