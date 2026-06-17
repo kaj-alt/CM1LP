@@ -200,6 +200,12 @@
       integer :: errcode
       integer :: n_bad_prrp, n_bad_prmult, n_bad_pract, n_bad_nanvel
       integer :: n_bad_fluidnan, n_bad_prevvel, n_bad_taupnan
+      ! v5 FLUID_DIAG locals — declared at routine top because NVFORTRAN 23.1
+      ! does not support BLOCK constructs containing $acc parallel directives.
+      integer :: fd_ii, fd_jj, fd_kk
+      integer :: fd_nan_u, fd_nan_v, fd_nan_w
+      integer :: fd_nan_k_lo, fd_nan_k_hi
+      real :: fd_umin, fd_umax, fd_vmin, fd_vmax, fd_wmin, fd_wmax
       integer(i8) :: nactive_new
       integer :: badActive, firstBad, lastBad
       integer :: badCompact, numArrive_dbg, badArrive, indx
@@ -406,83 +412,78 @@
     ! v4 showed n_bad_fluidnan == n_bad_nanvel: parcels see NaN fluid velocity
     ! at step 433. This block tells us whether the device-resident u/v/w arrays
     ! themselves carry NaN (solver origin) and bounds the k-range where they sit.
-    block
-      integer :: ii, jj, kk
-      integer :: nan_u, nan_v, nan_w
-      integer :: nan_k_lo, nan_k_hi
-      real :: umin, umax, vmin, vmax, wmin, wmax
+    ! (Declarations live at the routine top — NVFORTRAN 23.1 rejects BLOCK
+    ! constructs that contain $acc parallel directives.)
+    fd_nan_u = 0
+    fd_nan_v = 0
+    fd_nan_w = 0
+    fd_nan_k_lo =  huge(0)
+    fd_nan_k_hi = -huge(0)
+    fd_umin =  huge(0.0); fd_umax = -huge(0.0)
+    fd_vmin =  huge(0.0); fd_vmax = -huge(0.0)
+    fd_wmin =  huge(0.0); fd_wmax = -huge(0.0)
 
-      nan_u = 0
-      nan_v = 0
-      nan_w = 0
-      nan_k_lo =  huge(0)
-      nan_k_hi = -huge(0)
-      umin =  huge(0.0); umax = -huge(0.0)
-      vmin =  huge(0.0); vmax = -huge(0.0)
-      wmin =  huge(0.0); wmax = -huge(0.0)
-
-      !$acc parallel loop collapse(3) default(present)                  &
-      !$acc   reduction(+:nan_u) reduction(min:umin) reduction(max:umax) &
-      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
-      do kk = kb, ke
-        do jj = jb, je
-          do ii = ib, ie+1
-            if (ua(ii,jj,kk) .ne. ua(ii,jj,kk)) then
-              nan_u = nan_u + 1
-              if (kk < nan_k_lo) nan_k_lo = kk
-              if (kk > nan_k_hi) nan_k_hi = kk
-            else
-              if (ua(ii,jj,kk) < umin) umin = ua(ii,jj,kk)
-              if (ua(ii,jj,kk) > umax) umax = ua(ii,jj,kk)
-            endif
-          end do
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_u) reduction(min:fd_umin) reduction(max:fd_umax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je
+        do fd_ii = ib, ie+1
+          if (ua(fd_ii,fd_jj,fd_kk) .ne. ua(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_u = fd_nan_u + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (ua(fd_ii,fd_jj,fd_kk) < fd_umin) fd_umin = ua(fd_ii,fd_jj,fd_kk)
+            if (ua(fd_ii,fd_jj,fd_kk) > fd_umax) fd_umax = ua(fd_ii,fd_jj,fd_kk)
+          endif
         end do
       end do
+    end do
 
-      !$acc parallel loop collapse(3) default(present)                  &
-      !$acc   reduction(+:nan_v) reduction(min:vmin) reduction(max:vmax) &
-      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
-      do kk = kb, ke
-        do jj = jb, je+1
-          do ii = ib, ie
-            if (va(ii,jj,kk) .ne. va(ii,jj,kk)) then
-              nan_v = nan_v + 1
-              if (kk < nan_k_lo) nan_k_lo = kk
-              if (kk > nan_k_hi) nan_k_hi = kk
-            else
-              if (va(ii,jj,kk) < vmin) vmin = va(ii,jj,kk)
-              if (va(ii,jj,kk) > vmax) vmax = va(ii,jj,kk)
-            endif
-          end do
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_v) reduction(min:fd_vmin) reduction(max:fd_vmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je+1
+        do fd_ii = ib, ie
+          if (va(fd_ii,fd_jj,fd_kk) .ne. va(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_v = fd_nan_v + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (va(fd_ii,fd_jj,fd_kk) < fd_vmin) fd_vmin = va(fd_ii,fd_jj,fd_kk)
+            if (va(fd_ii,fd_jj,fd_kk) > fd_vmax) fd_vmax = va(fd_ii,fd_jj,fd_kk)
+          endif
         end do
       end do
+    end do
 
-      !$acc parallel loop collapse(3) default(present)                  &
-      !$acc   reduction(+:nan_w) reduction(min:wmin) reduction(max:wmax) &
-      !$acc   reduction(min:nan_k_lo) reduction(max:nan_k_hi)
-      do kk = kb, ke+1
-        do jj = jb, je
-          do ii = ib, ie
-            if (wa(ii,jj,kk) .ne. wa(ii,jj,kk)) then
-              nan_w = nan_w + 1
-              if (kk < nan_k_lo) nan_k_lo = kk
-              if (kk > nan_k_hi) nan_k_hi = kk
-            else
-              if (wa(ii,jj,kk) < wmin) wmin = wa(ii,jj,kk)
-              if (wa(ii,jj,kk) > wmax) wmax = wa(ii,jj,kk)
-            endif
-          end do
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_w) reduction(min:fd_wmin) reduction(max:fd_wmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke+1
+      do fd_jj = jb, je
+        do fd_ii = ib, ie
+          if (wa(fd_ii,fd_jj,fd_kk) .ne. wa(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_w = fd_nan_w + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (wa(fd_ii,fd_jj,fd_kk) < fd_wmin) fd_wmin = wa(fd_ii,fd_jj,fd_kk)
+            if (wa(fd_ii,fd_jj,fd_kk) > fd_wmax) fd_wmax = wa(fd_ii,fd_jj,fd_kk)
+          endif
         end do
       end do
+    end do
 
-      write(6,*) ' FLUID_DIAG nstep=', nstep, ' mtime=', real(mtime), &
-                 ' myid=', myid, &
-                 ' nan_u=', nan_u, ' nan_v=', nan_v, ' nan_w=', nan_w, &
-                 ' nan_k_lo=', nan_k_lo, ' nan_k_hi=', nan_k_hi, &
-                 ' umin=', umin, ' umax=', umax, &
-                 ' vmin=', vmin, ' vmax=', vmax, &
-                 ' wmin=', wmin, ' wmax=', wmax
-    end block
+    write(6,*) ' FLUID_DIAG nstep=', nstep, ' mtime=', real(mtime), &
+               ' myid=', myid, &
+               ' nan_u=', fd_nan_u, ' nan_v=', fd_nan_v, ' nan_w=', fd_nan_w, &
+               ' nan_k_lo=', fd_nan_k_lo, ' nan_k_hi=', fd_nan_k_hi, &
+               ' umin=', fd_umin, ' umax=', fd_umax, &
+               ' vmin=', fd_vmin, ' vmax=', fd_vmax, &
+               ' wmin=', fd_wmin, ' wmax=', fd_wmax
     ! ---- end v5 FLUID_DIAG ----
 
     !$acc parallel default(present)
