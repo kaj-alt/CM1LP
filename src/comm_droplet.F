@@ -630,10 +630,11 @@ contains
 
      iptr = ptrDepart(dir_idx)
      numDepart   = Depart(dir_idx)
-     !$acc parallel loop gang vector collapse(2) default(present)
+     !$acc parallel loop gang vector default(present) private(np)
      do i=1,numDepart
+       np = Depart_ind(iptr+i-1)
+       !$acc loop seq
        do iv=1,npvals
-         np = Depart_ind(iptr+i-1)
          droplet_buffer(i,iv) = pdata(np,iv)
          pdata(np,iv) = neg_huge
        enddo
@@ -807,7 +808,7 @@ contains
         integer :: ptrdir
         integer, dimension(nparcelsLocal) :: Cidx
 
-        !$acc data create(Cidx) present(pdata_neighbor)
+        !$acc data create(Cidx) present(pdata_neighbor,Depart_ind)
 
         ptrdir = ptrDepart(dir)
         !$acc wait
@@ -815,19 +816,12 @@ contains
         !$acc wait
 
         !$acc parallel loop gang vector default(present)
-        do np=1,nparcelsLocalActive-1
-           if(Cidx(np) .ne. Cidx(np+1)) then
+        do np=1,nparcelsLocalActive
+           if(pdata_neighbor(np).eq.dir) then
              Depart_ind(ptrdir+Cidx(np))=np
            endif
         enddo
         !$acc end parallel
-
-        ! special treament for the last value in the array
-        !$acc kernels default(present) 
-        if(pdata_neighbor(nparcelsLocalActive).eq.dir) then
-           Depart_ind(ptrdir+Cidx(nparcelsLocalActive)) = nparcelsLocalActive
-        endif
-        !$acc end kernels
 
         !$acc end data
 
@@ -859,10 +853,11 @@ contains
 
      ptr = ptrArrive(dir_idx)
      numArrive = Arrive(dir_idx)
-     !$acc parallel loop gang vector collapse(2) default(present)
+     !$acc parallel loop gang vector default(present) private(iptr)
      do i = 1, numArrive
+       iptr = holes_ind(ptr+i-1)
+       !$acc loop seq
        do iv=1,npvals
-         iptr = holes_ind(ptr+i-1)
          pdata(iptr,iv) = droplet_buffer(i,iv)
        end do
      end do

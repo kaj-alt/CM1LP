@@ -24,6 +24,8 @@
   double precision :: mass_reentry,eng_reentry,m1_reentry,m2_reentry
   double precision :: mass_evap,mass_dpten
 
+  real, allocatable, dimension(:) :: sfs_fs_profile
+
   integer :: particle_seed
 
   integer :: ngidx  !Each MPI rank will keep a "global" particle index counter which increases for every new particle created on this rank
@@ -155,8 +157,9 @@
 
       real :: uval,vval,wval,qval,prsval,tval,rhoval,rhval
       real :: khhval,khvval,dkhvdzval
-      real :: sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval,epssgsval,lsgsval
+      real :: sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval,epssgsval,lsgsval,fsval
       real :: sigdot
+      real :: fs_sgs(kb:ke+1)
 
       logical, parameter :: debug = .false.
 
@@ -208,8 +211,11 @@
       real :: fd_umin, fd_umax, fd_vmin, fd_vmax, fd_wmin, fd_wmax
       integer(i8) :: nactive_new
       integer :: badActive, firstBad, lastBad
-      integer :: badCompact, numArrive_dbg, badArrive, indx
-      integer :: badBackfillSearch, badThis
+      integer :: badCompact, firstBadCompact, lastBadCompact
+      integer :: numArrive_dbg, badArrive, firstBadArrive, lastBadArrive, indx
+      integer :: badBackfillSearch, firstBadBackfill, lastBadBackfill, badThis
+      integer :: badDepart, firstBadDepart, lastBadDepart
+      integer :: badArriveHole, firstBadArriveHole, lastBadArriveHole
       integer :: badArriveN,badArriveS,badArriveW,badArriveE
       integer :: badArriveNW,badArriveNE,badArriveSW,badArriveSE
       integer :: arrN0,arrN1,arrS0,arrS1,arrW0,arrW1,arrE0,arrE1
@@ -240,7 +246,7 @@
 !     (for the parcel subroutines only!)
 
 #ifdef MPI
-      !$acc data create(pdata_neighbor,msk)
+      !$acc data create(pdata_neighbor,msk,fs_sgs)
 
       !$acc parallel loop gang vector default(present)
       do np = 1, nparcelsLocalActive
@@ -248,7 +254,7 @@
       end do
       !$acc end parallel
 #else
-      !$acc data copyin (randomNumbers,randomNumbers%state)
+      !$acc data copyin (randomNumbers,randomNumbers%state) create(fs_sgs)
 #endif
 
     IF(bbc.eq.1)THEN
@@ -349,6 +355,16 @@
        end do
     end do
     !$acc end parallel
+
+    if (drop_sgs_opt.eq.2) then
+       call compute_sfs_fs_profile(ua,va,wa,tkea,fs_sgs)
+    else
+       do k=kb,ke+1
+          fs_sgs(k) = 0.0
+       enddo
+       if (allocated(sfs_fs_profile)) sfs_fs_profile = 0.0
+    endif
+    !$acc update device(fs_sgs)
 
   !Compute temperature for interpolation
 
@@ -592,6 +608,7 @@
       dsgsdzval = 0.0
       epssgsval = 0.0
       lsgsval = 0.0
+      fsval = 0.0
       if (drop_sgs_opt.eq.1) then
         call interpolate_sfs_position_fields(iflag,jflag,kflag,x3d,y3d,z3d,sig3d, &
                                              khhval,khvval,dkhvdzval, &
@@ -600,8 +617,8 @@
       if (drop_sgs_opt.eq.2) then
         call interpolate_sfs_velocity_fields(iflag,jflag,kflag,x3d,y3d,z3d,sig3d, &
                                              sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval, &
-                                             epssgsval,lsgsval, &
-                                             xh,yh,zf,sigmaf,tkea,dissten)
+                                             epssgsval,lsgsval,fsval, &
+                                             xh,yh,zf,sigmaf,tkea,dissten,fs_sgs)
       endif
 
       ! NVHPC 23.1 cannot lower TRANSFER inside acc routine seq.
@@ -615,7 +632,7 @@
                            x3d,y3d,z3d,sig3d,uval,vval,wval,qval, &
                            khhval,khvval,dkhvdzval, &
                            sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval, &
-                           epssgsval,lsgsval, &
+                           epssgsval,lsgsval,fsval, &
                            rhoval,prsval,tval,Nup,rhop0,taup0,rp0, &
                            part_grav1,part_grav2,part_grav3,debug, &
                            neighbor,num_fallout,errcode,n_bad_nanvel, &
@@ -908,46 +925,43 @@
      !$acc enter data create(backfill_ind)
      badBackfillSearch = 0
      if (numBackfill .gt. 0) then 
-       if ((nparcelsLocalActive - numBackfill) .eq. 0) then
-          ! Set backfill_ind to 1 to handle an exception case, 
-          ! where all the active droplets fall out or leave
-          ! the current MPI domain
-          !$acc parallel loop gang vector default(present)
-          do i = 1, numBackfill
-             backfill_ind(i) = 1
-          end do
-       else
-          !$acc parallel num_gangs(1) num_workers(1) default(present)
-          np = nparcelsLocalActive
-          i=0
-          do while (i.lt. numBackfill) 
-            if(np.le.0)then
-              ! GHB 220616: nothing will be done in this case; just give backfill_ind a 
-              !             harmless value and move on
-              i=i+1
-              backfill_ind(i) = nparcelsLocalActive+1
-            else
-            if (.not.msk(np)) then 
-              i=i+1
-              backfill_ind(i) = np
-            end if
-            np=np-1
-            endif
-          enddo
-          !$acc end parallel
-          if(verbose) then
-             !$acc update host(backfill_ind)
-             print *,'backfill_ind: ',backfill_ind(1:numBackfill)
-          endif
-       end if
+       !$acc parallel num_gangs(1) num_workers(1) default(present)
+       np = nparcelsLocalActive
+       i=0
+       do while (i.lt. numBackfill)
+         do while (np.gt.0)
+           if (int(np,i8).gt.nactive_new .and. .not.msk(np)) exit
+           np=np-1
+         enddo
+         i=i+1
+         if (np.gt.0) then
+           backfill_ind(i) = np
+           np=np-1
+         else
+           backfill_ind(i) = nparcelsLocalActive+1
+         endif
+       enddo
+       !$acc end parallel
+       if(verbose) then
+          !$acc update host(backfill_ind)
+          print *,'backfill_ind: ',backfill_ind(1:numBackfill)
+       endif
      end if
 
      if (numBackfill .gt. 0) then
        badBackfillSearch = 0
-       !$acc parallel loop gang vector default(present) reduction(+:badBackfillSearch)
+       firstBadBackfill = numBackfill + 1
+       lastBadBackfill = 0
+       !$acc parallel loop gang vector default(present) private(k) &
+       !$acc reduction(+:badBackfillSearch) &
+       !$acc reduction(min:firstBadBackfill) reduction(max:lastBadBackfill)
        do n=1,numBackfill
-         if (backfill_ind(n) .lt. 1 .or. backfill_ind(n) .gt. nparcelsLocalActive) then
+         k = backfill_ind(n)
+         if (k .lt. 1 .or. k .gt. nparcelsLocalActive .or. &
+             int(k,i8) .le. nactive_new) then
            badBackfillSearch = badBackfillSearch + 1
+           firstBadBackfill = min(firstBadBackfill,n)
+           lastBadBackfill = max(lastBadBackfill,n)
          endif
        enddo
        !$acc end parallel
@@ -956,6 +970,19 @@
      !$acc wait
 
      if (badBackfillSearch .gt. 0) then
+       !$acc update host(backfill_ind)
+       print *,'DROPLET BACKFILL SEARCH EXHAUSTED DETAIL myid=',myid, &
+               ' nstep=',nstep
+       print *,' active_old=',nparcelsLocalActive,' active_new=', &
+               nactive_new,' depart=',sum(Depart),' fallout=',num_fallout
+       print *,' arrive=',sum(Arrive),' backfill=',numBackfill, &
+               ' bad_donors=',badBackfillSearch
+       print *,' first_bad_backfill=',firstBadBackfill, &
+               ' last_bad_backfill=',lastBadBackfill
+       if (firstBadBackfill.ge.1 .and. firstBadBackfill.le.numBackfill) then
+         print *,' first_bad_donor=',backfill_ind(firstBadBackfill)
+       endif
+       call flush(6)
        stop 'DROPLET BACKFILL SEARCH EXHAUSTED'
      endif
 
@@ -966,6 +993,106 @@
     endif
 
     if(timestats.ge.1) time_dropC3=time_dropC3+mytime()
+
+    badArriveHole = 0
+    firstBadArriveHole = numArrive_dbg + 1
+    lastBadArriveHole = 0
+    if (numArrive_dbg.gt.0) then
+      !$acc parallel loop gang vector default(present) private(indx,badThis) &
+      !$acc reduction(+:badArriveHole) &
+      !$acc reduction(min:firstBadArriveHole) reduction(max:lastBadArriveHole)
+      do n=1,numArrive_dbg
+        indx = holes_ind(n)
+        badThis = 0
+        if (indx .lt. 1 .or. indx .gt. nparcelsLocal) then
+          badThis = 1
+        else
+          if (.not.msk(indx)) then
+            badThis = 1
+          endif
+          if (n.gt.1) then
+            if (holes_ind(n) .le. holes_ind(n-1)) then
+              badThis = 1
+            endif
+          endif
+        endif
+
+        if (badThis.ne.0) then
+          badArriveHole = badArriveHole + 1
+          firstBadArriveHole = min(firstBadArriveHole,n)
+          lastBadArriveHole = max(lastBadArriveHole,n)
+        endif
+      enddo
+      !$acc end parallel
+    endif
+
+    if (badArriveHole.gt.0) then
+      !$acc update host(holes_ind)
+      print *,'DROPLET BAD ARRIVAL HOLE BEFORE COMM DETAIL myid=', &
+              myid,' nstep=',nstep
+      print *,' active_old=',nparcelsLocalActive,' active_new=', &
+              nactive_new,' depart=',numDepart,' fallout=',num_fallout
+      print *,' arrive=',numArrive_dbg,' backfill=',numBackfill, &
+              ' bad_holes=',badArriveHole
+      print *,' first_bad_arrival_hole=',firstBadArriveHole, &
+              ' last_bad_arrival_hole=',lastBadArriveHole
+      if (firstBadArriveHole.ge.1 .and. &
+          firstBadArriveHole.le.numArrive_dbg) then
+        print *,' first_bad_hole_index=',holes_ind(firstBadArriveHole)
+      endif
+      print *,' Depart=',Depart
+      print *,' Arrive=',Arrive
+      call flush(6)
+      stop 'DROPLET BAD ARRIVAL HOLE BEFORE COMM'
+    endif
+
+    badDepart = 0
+    firstBadDepart = numDepart + 1
+    lastBadDepart = 0
+    if (numDepart.gt.0) then
+      !$acc parallel loop gang vector default(present) private(indx,badThis) &
+      !$acc reduction(+:badDepart) &
+      !$acc reduction(min:firstBadDepart) reduction(max:lastBadDepart)
+      do n=1,numDepart
+        indx = Depart_ind(n)
+        badThis = 0
+        if (indx .lt. 1 .or. indx .gt. nparcelsLocalActive) then
+          badThis = 1
+        else
+          if (pdata(indx,prrp) .le. 0.0 .or. &
+              pdata(indx,prmult) .le. 0.0 .or. &
+              pdata(indx,pract) .lt. 0.0) then
+            badThis = 1
+          endif
+        endif
+
+        if (badThis.ne.0) then
+          badDepart = badDepart + 1
+          firstBadDepart = min(firstBadDepart,n)
+          lastBadDepart = max(lastBadDepart,n)
+        endif
+      enddo
+      !$acc end parallel
+    endif
+
+    if (badDepart.gt.0) then
+      !$acc update host(Depart_ind)
+      print *,'DROPLET BAD DEPARTURE BEFORE COMM DETAIL myid=', &
+              myid,' nstep=',nstep
+      print *,' active_old=',nparcelsLocalActive,' active_new=', &
+              nactive_new,' depart=',numDepart,' fallout=',num_fallout
+      print *,' arrive=',numArrive_dbg,' backfill=',numBackfill, &
+              ' bad_depart=',badDepart
+      print *,' first_bad_depart_slot=',firstBadDepart, &
+              ' last_bad_depart_slot=',lastBadDepart
+      if (firstBadDepart.ge.1 .and. firstBadDepart.le.numDepart) then
+        print *,' first_bad_depart_index=',Depart_ind(firstBadDepart)
+      endif
+      print *,' Depart=',Depart
+      print *,' Arrive=',Arrive
+      call flush(6)
+      stop 'DROPLET BAD DEPARTURE BEFORE COMM'
+    endif
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Step 4: Exchange the detailed information of the droplets that will  !
@@ -991,6 +1118,8 @@
     badArriveNE = 0
     badArriveSW = 0
     badArriveSE = 0
+    firstBadArrive = numArrive_dbg + 1
+    lastBadArrive = 0
     arrN0  = ptrArrive(inorth)
     arrN1  = arrN0  + Arrive(inorth)
     arrS0  = ptrArrive(isouth)
@@ -1011,7 +1140,8 @@
     if (numArrive_dbg.gt.0) then
       !$acc parallel loop gang vector default(present) private(indx,badThis) &
       !$acc reduction(+:badArrive,badArriveN,badArriveS,badArriveW,badArriveE) &
-      !$acc reduction(+:badArriveNW,badArriveNE,badArriveSW,badArriveSE)
+      !$acc reduction(+:badArriveNW,badArriveNE,badArriveSW,badArriveSE) &
+      !$acc reduction(min:firstBadArrive) reduction(max:lastBadArrive)
       do n=1,numArrive_dbg
         indx = holes_ind(n)
         badThis = 0
@@ -1028,6 +1158,8 @@
 
         if (badThis .ne. 0) then
           badArrive = badArrive + 1
+          firstBadArrive = min(firstBadArrive,n)
+          lastBadArrive = max(lastBadArrive,n)
           if (n .ge. arrN0  .and. n .lt. arrN1)  badArriveN  = badArriveN  + 1
           if (n .ge. arrS0  .and. n .lt. arrS1)  badArriveS  = badArriveS  + 1
           if (n .ge. arrW0  .and. n .lt. arrW1)  badArriveW  = badArriveW  + 1
@@ -1042,35 +1174,83 @@
     endif
 
     if (badArrive.gt.0) then
+      !$acc update host(holes_ind)
+      print *,'DROPLET BAD ARRIVAL AFTER COMM DETAIL myid=', &
+              myid,' nstep=',nstep
+      print *,' active_old=',nparcelsLocalActive,' active_new=', &
+              nactive_new,' depart=',numDepart,' fallout=',num_fallout
+      print *,' arrive=',numArrive_dbg,' backfill=',numBackfill, &
+              ' bad_arrive=',badArrive
+      print *,' bad_dirs N S W E NW NE SW SE=',badArriveN,badArriveS, &
+              badArriveW,badArriveE,badArriveNW,badArriveNE, &
+              badArriveSW,badArriveSE
+      print *,' first_bad_arrive_slot=',firstBadArrive, &
+              ' last_bad_arrive_slot=',lastBadArrive
+      if (firstBadArrive.ge.1 .and. firstBadArrive.le.numArrive_dbg) then
+        print *,' first_bad_arrive_hole=',holes_ind(firstBadArrive)
+      endif
+      print *,' Depart=',Depart
+      print *,' Arrive=',Arrive
+      call flush(6)
       stop 'DROPLET BAD ARRIVAL AFTER COMM'
     endif
 
     badCompact = 0
+    firstBadCompact = numBackfill + 1
+    lastBadCompact = 0
 
     if (numBackfill.gt.0) then
-      !$acc parallel loop gang vector default(present) private(indx,k) reduction(+:badCompact)
+      !$acc parallel loop gang vector default(present) private(indx,k,badThis) &
+      !$acc reduction(+:badCompact) &
+      !$acc reduction(min:firstBadCompact) reduction(max:lastBadCompact)
       do n=1,numBackfill
         indx = holes_ind(numArrive_dbg+n)
         k = backfill_ind(n)
+        badThis = 0
 
         if (indx .lt. 1 .or. indx .gt. nparcelsLocal) then
-          badCompact = badCompact + 1
-        elseif (indx .lt. k) then
-          if (k .lt. 1 .or. k .gt. nparcelsLocalActive) then
-            badCompact = badCompact + 1
-          else
-            if (pdata(k,prrp) .le. 0.0 .or. &
-                pdata(k,prmult) .le. 0.0 .or. &
-                pdata(k,pract) .lt. 0.0) then
-              badCompact = badCompact + 1
-            endif
+          badThis = 1
+        elseif (int(indx,i8) .gt. nactive_new) then
+          badThis = 1
+        endif
+
+        if (k .lt. 1 .or. k .gt. nparcelsLocalActive .or. &
+            int(k,i8) .le. nactive_new) then
+          badThis = 1
+        else
+          if (pdata(k,prrp) .le. 0.0 .or. &
+              pdata(k,prmult) .le. 0.0 .or. &
+              pdata(k,pract) .lt. 0.0) then
+            badThis = 1
           endif
+        endif
+
+        if (badThis .ne. 0) then
+          badCompact = badCompact + 1
+          firstBadCompact = min(firstBadCompact,n)
+          lastBadCompact = max(lastBadCompact,n)
         endif
       enddo
       !$acc end parallel
     end if
 
     if (badCompact.gt.0) then
+      !$acc update host(holes_ind,backfill_ind)
+      print *,'DROPLET BAD COMPACT INDEX DETAIL myid=',myid, &
+              ' nstep=',nstep
+      print *,' active_old=',nparcelsLocalActive,' active_new=', &
+              nactive_new,' depart=',numDepart,' fallout=',num_fallout
+      print *,' arrive=',numArrive_dbg,' backfill=',numBackfill, &
+              ' bad_compact=',badCompact
+      print *,' first_bad_compact=',firstBadCompact, &
+              ' last_bad_compact=',lastBadCompact
+      if (firstBadCompact.ge.1 .and. firstBadCompact.le.numBackfill) then
+        print *,' first_bad_hole=',holes_ind(numArrive_dbg+firstBadCompact), &
+                ' first_bad_donor=',backfill_ind(firstBadCompact)
+      endif
+      print *,' Depart=',Depart
+      print *,' Arrive=',Arrive
+      call flush(6)
       stop 'DROPLET BAD COMPACT INDEX'
     endif
 
@@ -1726,7 +1906,7 @@
                              x3d,y3d,z3d,sig3d,uval,vval,wval,qval, &
                              khhval,khvval,dkhvdzval, &
                              sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval, &
-                             epssgsval,lsgsval, &
+                             epssgsval,lsgsval,fsval, &
                              rhoval,prsval,tval,Nup,rhop0,taup0,rp0, &
                              part_grav1,part_grav2,part_grav3,debug, &
                              neighbor,num_fallout,errcode,n_bad_nanvel, &
@@ -1760,7 +1940,7 @@
       real, intent(in) :: uval,vval,wval,qval,rhoval,prsval,tval
       real, intent(in) :: khhval,khvval,dkhvdzval
       real, intent(in) :: sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval
-      real, intent(in) :: epssgsval,lsgsval
+      real, intent(in) :: epssgsval,lsgsval,fsval
       real, intent(inout), dimension(nparcelsLocal,npvals) :: pdata
       integer, intent(inout), dimension(nparcelsLocal,3) :: pdata_locind
       real, intent(out) :: Nup
@@ -1851,7 +2031,7 @@
         call sfs_velocity_update(dt,nstep,mtime,np,seed_base,pdata, &
                                  x3d,y3d,z3d,sigsgsval, &
                                  dsgsdxval,dsgsdyval,dsgsdzval, &
-                                 epssgsval,lsgsval)
+                                 epssgsval,lsgsval,fsval)
       endif
 
       if (x3d.ne.x3d .or. y3d.ne.y3d .or. z3d.ne.z3d) then
@@ -2140,6 +2320,122 @@
 
       end subroutine BE_integration
 
+      subroutine compute_sfs_fs_profile(ua,va,wa,tkea,fs_sgs)
+
+      use input, only : ib,ie,jb,je,kb,ke,ibt,iet,jbt,jet,kbt,ket, &
+                        ni,nj,nk,nx,ny,ierr
+#ifdef MPI
+      use mpi
+#endif
+      implicit none
+
+      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
+      real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: va
+      real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: wa
+      real, intent(in), dimension(ibt:iet,jbt:jet,kbt:ket) :: tkea
+      real, intent(out), dimension(kb:ke+1) :: fs_sgs
+
+      integer :: i,j,k
+      double precision :: denom,er_w,ngrid
+      double precision, dimension(1:nk) :: uavg,vavg,uvar,vvar
+      double precision, dimension(1:nk+1) :: wavg,wvar,esavg
+
+      ngrid = dble(nx*ny)
+
+      do k=1,nk
+         uavg(k) = 0.0d0
+         vavg(k) = 0.0d0
+         uvar(k) = 0.0d0
+         vvar(k) = 0.0d0
+      enddo
+      do k=1,nk+1
+         wavg(k) = 0.0d0
+         wvar(k) = 0.0d0
+         esavg(k) = 0.0d0
+         fs_sgs(k) = 0.0
+      enddo
+
+      do k=1,nk
+         do j=1,nj
+            do i=1,ni
+               uavg(k) = uavg(k) + dble(ua(i,j,k))
+               vavg(k) = vavg(k) + dble(va(i,j,k))
+            enddo
+         enddo
+      enddo
+      do k=1,nk+1
+         do j=1,nj
+            do i=1,ni
+               wavg(k) = wavg(k) + dble(wa(i,j,k))
+               esavg(k) = esavg(k) + dble(max(tkea(i,j,k),0.0))
+            enddo
+         enddo
+      enddo
+
+#ifdef MPI
+      call mpi_allreduce(mpi_in_place,uavg,nk,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,vavg,nk,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,wavg,nk+1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,esavg,nk+1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+#endif
+
+      do k=1,nk
+         uavg(k) = uavg(k)/ngrid
+         vavg(k) = vavg(k)/ngrid
+      enddo
+      do k=1,nk+1
+         wavg(k) = wavg(k)/ngrid
+         esavg(k) = esavg(k)/ngrid
+      enddo
+
+      do k=1,nk
+         do j=1,nj
+            do i=1,ni
+               uvar(k) = uvar(k) + (dble(ua(i,j,k))-uavg(k))**2
+               vvar(k) = vvar(k) + (dble(va(i,j,k))-vavg(k))**2
+            enddo
+         enddo
+      enddo
+      do k=1,nk+1
+         do j=1,nj
+            do i=1,ni
+               wvar(k) = wvar(k) + (dble(wa(i,j,k))-wavg(k))**2
+            enddo
+         enddo
+      enddo
+
+#ifdef MPI
+      call mpi_allreduce(mpi_in_place,uvar,nk,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,vvar,nk,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+      call mpi_allreduce(mpi_in_place,wvar,nk+1,mpi_double_precision,mpi_sum,mpi_comm_world,ierr)
+#endif
+
+      do k=1,nk
+         uvar(k) = uvar(k)/ngrid
+         vvar(k) = vvar(k)/ngrid
+      enddo
+      do k=1,nk+1
+         wvar(k) = wvar(k)/ngrid
+      enddo
+
+      ! Form the horizontally averaged SGS turbulence fraction on w levels.
+      ! The u/v resolved variances are averaged from adjacent scalar levels.
+      do k=2,nk
+         er_w = 0.25d0*(uvar(k-1)+uvar(k)) + 0.25d0*(vvar(k-1)+vvar(k)) &
+              + 0.5d0*wvar(k)
+         denom = esavg(k) + er_w
+         if (denom.gt.0.0d0) fs_sgs(k) = real(max(0.0d0,min(1.0d0,esavg(k)/denom)))
+      enddo
+      fs_sgs(1) = 0.0
+      fs_sgs(nk+1) = 0.0
+
+      if (.not.allocated(sfs_fs_profile)) allocate(sfs_fs_profile(1:nk+1))
+      do k=1,nk+1
+         sfs_fs_profile(k) = fs_sgs(k)
+      enddo
+
+      end subroutine compute_sfs_fs_profile
+
       subroutine interpolate_sfs_position_fields(iflag,jflag,kflag,x3d,y3d,z3d,sig3d, &
                                                  khhval,khvval,dkhvdzval, &
                                                  xh,yh,zf,sigmaf,khh,khv)
@@ -2209,8 +2505,8 @@
 
       subroutine interpolate_sfs_velocity_fields(iflag,jflag,kflag,x3d,y3d,z3d,sig3d, &
                                                  sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval, &
-                                                 epssgsval,lsgsval, &
-                                                 xh,yh,zf,sigmaf,tkea,dissten)
+                                                 epssgsval,lsgsval,fsval, &
+                                                 xh,yh,zf,sigmaf,tkea,dissten,fs_sgs)
       !$acc routine seq
       use input, only : ib,ie,jb,je,kb,ke,ibt,iet,jbt,jet,kbt,ket,terrain_flag
       implicit none
@@ -2218,12 +2514,13 @@
       integer, intent(in) :: iflag,jflag,kflag
       real, intent(in) :: x3d,y3d,z3d,sig3d
       real, intent(out) :: sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval
-      real, intent(out) :: epssgsval,lsgsval
+      real, intent(out) :: epssgsval,lsgsval,fsval
       real, intent(in), dimension(ib:ie) :: xh
       real, intent(in), dimension(jb:je) :: yh
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: zf,dissten
       real, intent(in), dimension(kb:ke+1) :: sigmaf
       real, intent(in), dimension(ibt:iet,jbt:jet,kbt:ket) :: tkea
+      real, intent(in), dimension(kb:ke+1) :: fs_sgs
 
       integer :: i,j,k
       real :: rx,ry,rz,dxloc,dyloc,dzloc
@@ -2287,6 +2584,8 @@
                 + dissten(i+1,j+1,k  )*w7 + dissten(i+1,j+1,k+1)*w8
       epssgsval = max(epssgsval,0.0)
       lsgsval = (2.25*dxloc*dyloc*dzloc)**(1.0/3.0)
+      fsval = (1.0-rz)*fs_sgs(k) + rz*fs_sgs(k+1)
+      fsval = max(0.0,min(1.0,fsval))
 
       end subroutine interpolate_sfs_velocity_fields
 
@@ -2348,7 +2647,7 @@
       subroutine sfs_velocity_update(dt,nstep,mtime,np,seed_base,pdata, &
                                      x3d,y3d,z3d,sigsgsval, &
                                      dsgsdxval,dsgsdyval,dsgsdzval, &
-                                     epssgsval,lsgsval)
+                                     epssgsval,lsgsval,fsval)
       !$acc routine seq
       use input, only : nparcelsLocal,npvals,nx,ny,axisymm, &
                         prusgs,prvsgs,prwsgs,prsigsgs
@@ -2356,7 +2655,7 @@
       implicit none
 
       real, intent(in) :: dt,sigsgsval,dsgsdxval,dsgsdyval,dsgsdzval
-      real, intent(in) :: epssgsval,lsgsval
+      real, intent(in) :: epssgsval,lsgsval,fsval
       double precision, intent(in) :: mtime
       integer, intent(in) :: nstep,np
       integer(i8), intent(in) :: seed_base
@@ -2366,11 +2665,11 @@
       integer(i8) :: seed,state
       integer(i8), parameter :: im = 2147483647_i8
       real, parameter :: c0 = 6.0
-      real, parameter :: fs = 1.0
-      real :: sig_eff,sig_prev,eps_eff,l_eff,noise_amp
+      real, parameter :: dsig_cap = 0.5
+      real :: sig_eff,sig_prev,eps_eff,l_eff,fs_eff,noise_amp
       real :: normx,normy,normz
       real :: us_old,vs_old,ws_old
-      real :: a1,a2,a3
+      real :: a1,a2,a3,dsig_frac
       double precision :: u1,u2,fac,theta
 
       if( dt.le.0.0 ) return
@@ -2392,6 +2691,7 @@
       endif
 
       l_eff = max(lsgsval,1.0e-6)
+      fs_eff = max(0.0,min(1.0,fsval))
       eps_eff = epssgsval
       if( eps_eff.le.0.0 )then
         eps_eff = (0.93/l_eff)*(1.5*sig_eff)**1.5
@@ -2426,24 +2726,28 @@
       theta = 2.0d0*dble(pi)*u2
       normz = real(fac*cos(theta))
 
-      noise_amp = sqrt(max(fs*c0*eps_eff*dt,0.0))
+      noise_amp = sqrt(max(fs_eff*c0*eps_eff*dt,0.0))
+      ! Bound the sigm_s change term to avoid one-step amplification
+      ! when particles cross sharp SGS-energy gradients.
+      dsig_frac = log(sig_eff/sig_prev)
+      dsig_frac = max(-dsig_cap,min(dsig_cap,dsig_frac))
 
       us_old = pdata(np,prusgs)
-      a1 = -0.5*fs*c0*eps_eff*us_old/sig_eff
-      a2 = 0.5*(fs/sig_eff)*us_old*(sig_eff-sig_prev)/dt
-      a3 = 0.5*fs*dsgsdxval
+      a1 = -0.5*fs_eff*c0*eps_eff*us_old/sig_eff
+      a2 = 0.5*fs_eff*us_old*dsig_frac/dt
+      a3 = 0.5*fs_eff*dsgsdxval
       pdata(np,prusgs) = us_old + (a1+a2+a3)*dt + noise_amp*normx
 
       vs_old = pdata(np,prvsgs)
-      a1 = -0.5*fs*c0*eps_eff*vs_old/sig_eff
-      a2 = 0.5*(fs/sig_eff)*vs_old*(sig_eff-sig_prev)/dt
-      a3 = 0.5*fs*dsgsdyval
+      a1 = -0.5*fs_eff*c0*eps_eff*vs_old/sig_eff
+      a2 = 0.5*fs_eff*vs_old*dsig_frac/dt
+      a3 = 0.5*fs_eff*dsgsdyval
       pdata(np,prvsgs) = vs_old + (a1+a2+a3)*dt + noise_amp*normy
 
       ws_old = pdata(np,prwsgs)
-      a1 = -0.5*fs*c0*eps_eff*ws_old/sig_eff
-      a2 = 0.5*(fs/sig_eff)*ws_old*(sig_eff-sig_prev)/dt
-      a3 = 0.5*fs*dsgsdzval
+      a1 = -0.5*fs_eff*c0*eps_eff*ws_old/sig_eff
+      a2 = 0.5*fs_eff*ws_old*dsig_frac/dt
+      a3 = 0.5*fs_eff*dsgsdzval
       pdata(np,prwsgs) = ws_old + (a1+a2+a3)*dt + noise_amp*normz
 
       if( nx.gt.1 .and. axisymm.ne.1 )then
@@ -3228,7 +3532,7 @@
               tnumaerosol,tnumpart,tmasspart
 
       real :: partnum(nk),multnum(nk),partmass(nk),numconc(nk),sd_numconc(nk),massconc(nk),vp1mean(nk),vp2mean(nk),vp3mean(nk),vp1msqr(nk),vp2msqr(nk),vp3msqr(nk),uf1mean(nk),uf2mean(nk),uf3mean(nk),Tpsrc(nk),qvsrc(nk),rhovsrc(nk),qf(nk),Tf(nk),radmean(nk),radmsqr(nk),Tpmean(nk),Tpmsqr(nk),qfsat(nk),m1src(nk),m2src(nk),m3src(nk),qstarmean(nk),kmoist(nk),mse(nk),wk(nk),wtmp(nk)
-      real :: usgsmean(nk),vsgsmean(nk),wsgsmean(nk),sigm_smean(nk)
+      real :: usgsmean(nk),vsgsmean(nk),wsgsmean(nk),sigm_smean(nk),fsmean(nk)
       double precision, dimension(nk) :: qstardp,radmsqrdp
 
       real :: partnumrz(nk,nbins),multnumrz(nk,nbins),vp3meanrz(nk,nbins)
@@ -3968,6 +4272,13 @@
        end if
 #endif
 
+      fsmean = 0.0
+      if (allocated(sfs_fs_profile)) then
+         do iz=1,nk
+            fsmean(iz) = 0.5*(sfs_fs_profile(iz)+sfs_fs_profile(iz+1))
+         enddo
+      endif
+
 #ifdef NETCDF
       ! JS: this subroutine is not updated with the new MPI
       !     interface for the droplets yet
@@ -3977,7 +4288,7 @@
       call writedropdiag_nc(nrec,nbins, &
            rtime,tnumpart,tnummult,tnumaerosol,tnumdrop,tmasspart,radavg,radsqr,radmin,radmax,Tpavg,Tpsqr,Tpmin,Tpmax,Tfavg,qfavg,prsavg,rhoavg, &
            dumzh,numconc,sd_numconc,massconc,vp1mean,vp2mean,vp3mean,uf1mean,uf2mean,uf3mean, &
-           usgsmean,vsgsmean,wsgsmean,sigm_smean, &
+           usgsmean,vsgsmean,wsgsmean,sigm_smean,fsmean, &
            vp1msqr,vp2msqr,vp3msqr,m1src,m2src,m3src,Tpsrc,qvsrc,rhovsrc,Tf,qf,Tpmean,Tpmsqr, &
            radmean,radmsqr,qfsat,qstarmean,kmoist,mse,wk,multnumrz,vp3meanrz,tnumpart_r)
 #ifdef MPI
@@ -5499,7 +5810,7 @@
       subroutine writedropdiag_nc(nrec,nbins,&
                                   rtime,tnumpart,tnummult,tnumaerosol,tnumdrop,tmasspart,radavg,radsqr,radmin,radmax,Tpavg,Tpsqr,Tpmin,Tpmax,Tfavg,qfavg,prsavg,rhoavg,&
                                   zhvec,numconc,sd_numconc,massconc,vp1mean,vp2mean,vp3mean,uf1mean,uf2mean,uf3mean,&
-                                  usgsmean,vsgsmean,wsgsmean,sigm_smean,&
+                                  usgsmean,vsgsmean,wsgsmean,sigm_smean,fsmean,&
                                   vp1msqr,vp2msqr,vp3msqr,m1src,m2src,m3src,Tpsrc,qvsrc,rhovsrc,Tf,qf,Tpmean,Tpmsqr,&
                                   radmean,radmsqr,qfsat,qstarmean,kmoist,mse,wk,multnumrz,vp3meanrz,tnumpart_r)
       use input
@@ -5511,7 +5822,7 @@
       integer, intent(inout) :: nrec
       real,    intent(in)    :: rtime,radavg,radsqr,radmin,radmax,Tpavg,Tpsqr,Tpmin,Tpmax,Tfavg,qfavg,prsavg,rhoavg,tnummult,tnumaerosol,tnumdrop,tmasspart
       real,    intent(in)    :: zhvec(nk),numconc(nk),sd_numconc(nk),massconc(nk),vp1mean(nk),vp2mean(nk),vp3mean(nk),vp1msqr(nk),vp2msqr(nk),vp3msqr(nk),m1src(nk),m2src(nk),m3src(nk),Tpsrc(nk),qvsrc(nk),rhovsrc(nk),Tf(nk),qf(nk),Tpmean(nk),Tpmsqr(nk),radmean(nk),radmsqr(nk),qfsat(nk),qstarmean(nk),uf1mean(nk),uf2mean(nk),uf3mean(nk),kmoist(nk),mse(nk),wk(nk)
-      real,    intent(in)    :: usgsmean(nk),vsgsmean(nk),wsgsmean(nk),sigm_smean(nk)
+      real,    intent(in)    :: usgsmean(nk),vsgsmean(nk),wsgsmean(nk),sigm_smean(nk),fsmean(nk)
       real,    intent(in)    :: multnumrz(nk,nbins),vp3meanrz(nk,nbins)
       real,    intent(in)    :: tnumpart_r(nbins)
       integer, intent(in)    :: nbins
@@ -5778,6 +6089,10 @@
     call disp_err( nf90_def_var(ncid,"sigm_smean",nf90_float,(/zhid,timeid/),varid) , .true. )
     call disp_err( nf90_put_att(ncid,varid,"long_name","Horizontally averaged droplet SGS velocity variance sigm_s") , .true. )
     call disp_err( nf90_put_att(ncid,varid,"units","m^2/s^2") , .true. )
+
+    call disp_err( nf90_def_var(ncid,"fsmean",nf90_float,(/zhid,timeid/),varid) , .true. )
+    call disp_err( nf90_put_att(ncid,varid,"long_name","Horizontally averaged SGS turbulence fraction") , .true. )
+    call disp_err( nf90_put_att(ncid,varid,"units","1") , .true. )
     
     call disp_err( nf90_def_var(ncid,"vp1msqr",nf90_float,(/zhid,timeid/),varid) , .true. )
     call disp_err( nf90_put_att(ncid,varid,"long_name","Droplet mean squared u-velocity <up^2>") , .true. )
@@ -6072,6 +6387,9 @@
 
     call disp_err( nf90_inq_varid(ncid,"sigm_smean",varid) , .true. )
     call disp_err( nf90_put_var(ncid,varid,sigm_smean,(/1,time_index/)) , .true. )
+
+    call disp_err( nf90_inq_varid(ncid,"fsmean",varid) , .true. )
+    call disp_err( nf90_put_var(ncid,varid,fsmean,(/1,time_index/)) , .true. )
 
     call disp_err( nf90_inq_varid(ncid,"vp1msqr",varid) , .true. )
     call disp_err( nf90_put_var(ncid,varid,vp1msqr,(/1,time_index/)) , .true. )
