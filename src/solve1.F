@@ -349,6 +349,14 @@
       real :: tn,qn,nudgefac,taunudge,timenudge
       real :: qtmpreal
 
+      ! v7 TAP_A FLUID_DIAG locals — scan uten/vten/wten at end of solve1.
+      ! Declared at routine top per NVFORTRAN 23.1 BLOCK-vs-acc constraint
+      ! (same constraint that forced the v5 FLUID_DIAG layout in droplet.F).
+      integer :: fd_ii, fd_jj, fd_kk
+      integer :: fd_nan_u, fd_nan_v, fd_nan_w
+      integer :: fd_nan_k_lo, fd_nan_k_hi
+      real :: fd_umin, fd_umax, fd_vmin, fd_vmax, fd_wmin, fd_wmax
+
       real :: umod,uref,zref,oldval,newval
 
       double precision :: weps,afoo,bfoo,p0,p2
@@ -1876,6 +1884,83 @@
     !            - moved message passing and equate to solve_finish.F
 
       !!$acc end data
+
+    ! ---- v7 TAP_A FLUID_DIAG: scan uten/vten/wten on device at end of solve1 ----
+    ! Per-rank NaN reduction over the velocity tendencies that solve1 just produced
+    ! (pgrad + buoyancy + Coriolis + rdamp + ...). If uten/vten/wten are clean here
+    ! but u3d/v3d/w3d are NaN at TAP_B (end of solve2), the bug lives in soundcb
+    ! or downstream in solve2. If they are already NaN here, the bug is in solve1.
+    fd_nan_u = 0
+    fd_nan_v = 0
+    fd_nan_w = 0
+    fd_nan_k_lo =  huge(0)
+    fd_nan_k_hi = -huge(0)
+    fd_umin =  huge(0.0); fd_umax = -huge(0.0)
+    fd_vmin =  huge(0.0); fd_vmax = -huge(0.0)
+    fd_wmin =  huge(0.0); fd_wmax = -huge(0.0)
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_u) reduction(min:fd_umin) reduction(max:fd_umax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je
+        do fd_ii = ib, ie+1
+          if (uten(fd_ii,fd_jj,fd_kk) .ne. uten(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_u = fd_nan_u + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (uten(fd_ii,fd_jj,fd_kk) < fd_umin) fd_umin = uten(fd_ii,fd_jj,fd_kk)
+            if (uten(fd_ii,fd_jj,fd_kk) > fd_umax) fd_umax = uten(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_v) reduction(min:fd_vmin) reduction(max:fd_vmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je+1
+        do fd_ii = ib, ie
+          if (vten(fd_ii,fd_jj,fd_kk) .ne. vten(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_v = fd_nan_v + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (vten(fd_ii,fd_jj,fd_kk) < fd_vmin) fd_vmin = vten(fd_ii,fd_jj,fd_kk)
+            if (vten(fd_ii,fd_jj,fd_kk) > fd_vmax) fd_vmax = vten(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_w) reduction(min:fd_wmin) reduction(max:fd_wmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke+1
+      do fd_jj = jb, je
+        do fd_ii = ib, ie
+          if (wten(fd_ii,fd_jj,fd_kk) .ne. wten(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_w = fd_nan_w + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (wten(fd_ii,fd_jj,fd_kk) < fd_wmin) fd_wmin = wten(fd_ii,fd_jj,fd_kk)
+            if (wten(fd_ii,fd_jj,fd_kk) > fd_wmax) fd_wmax = wten(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    write(6,*) ' FLUID_DIAG_TAP_A_solve1_uvwten nstep=', nstep, ' mtime=', real(mtime), &
+               ' myid=', myid, &
+               ' nan_u=', fd_nan_u, ' nan_v=', fd_nan_v, ' nan_w=', fd_nan_w, &
+               ' nan_k_lo=', fd_nan_k_lo, ' nan_k_hi=', fd_nan_k_hi, &
+               ' umin=', fd_umin, ' umax=', fd_umax, &
+               ' vmin=', fd_vmin, ' vmax=', fd_vmax, &
+               ' wmin=', fd_wmin, ' wmax=', fd_wmax
+    ! ---- end v7 TAP_A FLUID_DIAG ----
 
       end subroutine solve1
 

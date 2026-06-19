@@ -356,6 +356,14 @@
       real :: qv,qli,cpli,cpm,cvm,qmax
       real :: tn,qn,nudgefac,taunudge
 
+      ! v7 TAP_B FLUID_DIAG locals — scan u3d/v3d/w3d at end of solve2.
+      ! Declared at routine top per NVFORTRAN 23.1 BLOCK-vs-acc constraint
+      ! (same constraint that forced the v5 FLUID_DIAG layout in droplet.F).
+      integer :: fd_ii, fd_jj, fd_kk
+      integer :: fd_nan_u, fd_nan_v, fd_nan_w
+      integer :: fd_nan_k_lo, fd_nan_k_hi
+      real :: fd_umin, fd_umax, fd_vmin, fd_vmax, fd_wmin, fd_wmax
+
       real :: umod,uref,zref,oldval,newval
 
       double precision :: weps,afoo,bfoo,p0,p2
@@ -2224,6 +2232,86 @@
 
     ! cm1r20.1:  - moved microphysics to mp_driver (which is called from cm1.F)
     !            - moved message passing and equate to solve_finish.F
+
+    ! ---- v7 TAP_B FLUID_DIAG: scan u3d/v3d/w3d on device at end of solve2 ----
+    ! Per-rank NaN reduction on the predicted velocity fields that soundcb just
+    ! finished writing. Together with TAP_A (end of solve1, scans uten/vten/wten)
+    ! and the existing FLUID_DIAG in droplet.F (scans ua/va/wa right before BE),
+    ! this brackets the three places the corruption could enter:
+    !   TAP_A NaN          → bug in solve1 tendency computation
+    !   TAP_A ok, TAP_B NaN→ bug in soundcb / advection / sgs (inside solve2)
+    !   TAP_B ok, BE NaN   → bug in solve3 comm/bcs or the ua=u3d copy
+    fd_nan_u = 0
+    fd_nan_v = 0
+    fd_nan_w = 0
+    fd_nan_k_lo =  huge(0)
+    fd_nan_k_hi = -huge(0)
+    fd_umin =  huge(0.0); fd_umax = -huge(0.0)
+    fd_vmin =  huge(0.0); fd_vmax = -huge(0.0)
+    fd_wmin =  huge(0.0); fd_wmax = -huge(0.0)
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_u) reduction(min:fd_umin) reduction(max:fd_umax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je
+        do fd_ii = ib, ie+1
+          if (u3d(fd_ii,fd_jj,fd_kk) .ne. u3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_u = fd_nan_u + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (u3d(fd_ii,fd_jj,fd_kk) < fd_umin) fd_umin = u3d(fd_ii,fd_jj,fd_kk)
+            if (u3d(fd_ii,fd_jj,fd_kk) > fd_umax) fd_umax = u3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_v) reduction(min:fd_vmin) reduction(max:fd_vmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je+1
+        do fd_ii = ib, ie
+          if (v3d(fd_ii,fd_jj,fd_kk) .ne. v3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_v = fd_nan_v + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (v3d(fd_ii,fd_jj,fd_kk) < fd_vmin) fd_vmin = v3d(fd_ii,fd_jj,fd_kk)
+            if (v3d(fd_ii,fd_jj,fd_kk) > fd_vmax) fd_vmax = v3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_w) reduction(min:fd_wmin) reduction(max:fd_wmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke+1
+      do fd_jj = jb, je
+        do fd_ii = ib, ie
+          if (w3d(fd_ii,fd_jj,fd_kk) .ne. w3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_w = fd_nan_w + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (w3d(fd_ii,fd_jj,fd_kk) < fd_wmin) fd_wmin = w3d(fd_ii,fd_jj,fd_kk)
+            if (w3d(fd_ii,fd_jj,fd_kk) > fd_wmax) fd_wmax = w3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    write(6,*) ' FLUID_DIAG_TAP_B_solve2_uvw3d nstep=', nstep, ' mtime=', real(mtime), &
+               ' myid=', myid, &
+               ' nan_u=', fd_nan_u, ' nan_v=', fd_nan_v, ' nan_w=', fd_nan_w, &
+               ' nan_k_lo=', fd_nan_k_lo, ' nan_k_hi=', fd_nan_k_hi, &
+               ' umin=', fd_umin, ' umax=', fd_umax, &
+               ' vmin=', fd_vmin, ' vmax=', fd_vmax, &
+               ' wmin=', fd_wmin, ' wmax=', fd_wmax
+    ! ---- end v7 TAP_B FLUID_DIAG ----
 
       end subroutine solve2
 
