@@ -960,7 +960,14 @@
         ifdroplet:  &
         if (prcl_droplet.ge.1) then
 
-          if( ptype.eq.7 .and. two_way_coupling.eq.1 )then
+          ! v8: drop the ptype.eq.7 gate per advisor — substepping should fire
+          ! whenever two-way coupling is on, not just for the new ptype=7 mode.
+          ! The dt-vs-tauc protection prevents explicit feedback overshoot when
+          ! cloud relaxation time goes below dt, regardless of which microphysics
+          ! mode is active. (For mult=1 / sparse particles the formula returns
+          ! num_dropsub=1 anyway, so this is mostly a no-op here — but it's a
+          ! correctness fix for the high-mult / two_way_coupling cases.)
+          if( two_way_coupling.eq.1 )then
             call compute_droplet_substeps(dt,xf,yf,zf,sigmaf,pdata,pdata_locind,num_dropsub)
           else
             num_dropsub = 1

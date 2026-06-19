@@ -408,6 +408,90 @@
 
 !--------------------------------------------------------------------
 
+    ! ---- v8 TAP_0 FLUID_DIAG: scan u3d/v3d/w3d on device at solve1 ENTRY ----
+    ! Discriminates between two seed origins for the NaN that v7 localized at
+    ! TAP_A (end of solve1, 8 cells at k=107-108 on rank 0):
+    !   TAP_0 NaN at those same cells -> seed comes from end-of-prior-step
+    !     droplet two-way coupling at solve3.F:1051 (u3d += dt*dpten(:,:,:,3:5)).
+    !     The 8-cell hotspot then matches one particle landing in a cell where
+    !     project_feedback wrote a NaN dpten value.
+    !   TAP_0 clean + TAP_A still NaN at those cells -> seed is internal to
+    !     solve1's tendency producer at k=107-108 (pgrad / buoyancy / Coriolis
+    !     / rdamp / diffusion), reading from finite inputs.
+    ! Either way the v7 amplifier story (solve2 / soundcb spreading 8 -> 1.2 M
+    ! across the array via 134 acoustic-substep halo updates) is unchanged.
+    fd_nan_u = 0
+    fd_nan_v = 0
+    fd_nan_w = 0
+    fd_nan_k_lo =  huge(0)
+    fd_nan_k_hi = -huge(0)
+    fd_umin =  huge(0.0); fd_umax = -huge(0.0)
+    fd_vmin =  huge(0.0); fd_vmax = -huge(0.0)
+    fd_wmin =  huge(0.0); fd_wmax = -huge(0.0)
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_u) reduction(min:fd_umin) reduction(max:fd_umax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je
+        do fd_ii = ib, ie+1
+          if (u3d(fd_ii,fd_jj,fd_kk) .ne. u3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_u = fd_nan_u + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (u3d(fd_ii,fd_jj,fd_kk) < fd_umin) fd_umin = u3d(fd_ii,fd_jj,fd_kk)
+            if (u3d(fd_ii,fd_jj,fd_kk) > fd_umax) fd_umax = u3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_v) reduction(min:fd_vmin) reduction(max:fd_vmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke
+      do fd_jj = jb, je+1
+        do fd_ii = ib, ie
+          if (v3d(fd_ii,fd_jj,fd_kk) .ne. v3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_v = fd_nan_v + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (v3d(fd_ii,fd_jj,fd_kk) < fd_vmin) fd_vmin = v3d(fd_ii,fd_jj,fd_kk)
+            if (v3d(fd_ii,fd_jj,fd_kk) > fd_vmax) fd_vmax = v3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) default(present)                        &
+    !$acc   reduction(+:fd_nan_w) reduction(min:fd_wmin) reduction(max:fd_wmax) &
+    !$acc   reduction(min:fd_nan_k_lo) reduction(max:fd_nan_k_hi)
+    do fd_kk = kb, ke+1
+      do fd_jj = jb, je
+        do fd_ii = ib, ie
+          if (w3d(fd_ii,fd_jj,fd_kk) .ne. w3d(fd_ii,fd_jj,fd_kk)) then
+            fd_nan_w = fd_nan_w + 1
+            if (fd_kk < fd_nan_k_lo) fd_nan_k_lo = fd_kk
+            if (fd_kk > fd_nan_k_hi) fd_nan_k_hi = fd_kk
+          else
+            if (w3d(fd_ii,fd_jj,fd_kk) < fd_wmin) fd_wmin = w3d(fd_ii,fd_jj,fd_kk)
+            if (w3d(fd_ii,fd_jj,fd_kk) > fd_wmax) fd_wmax = w3d(fd_ii,fd_jj,fd_kk)
+          endif
+        end do
+      end do
+    end do
+
+    write(6,*) ' FLUID_DIAG_TAP_0_solve1entry_uvw3d nstep=', nstep, ' mtime=', real(mtime), &
+               ' myid=', myid, &
+               ' nan_u=', fd_nan_u, ' nan_v=', fd_nan_v, ' nan_w=', fd_nan_w, &
+               ' nan_k_lo=', fd_nan_k_lo, ' nan_k_hi=', fd_nan_k_hi, &
+               ' umin=', fd_umin, ' umax=', fd_umax, &
+               ' vmin=', fd_vmin, ' vmax=', fd_vmax, &
+               ' wmin=', fd_wmin, ' wmax=', fd_wmax
+    ! ---- end v8 TAP_0 FLUID_DIAG ----
+
 #ifdef MPI
       nf=0
       nu=0
