@@ -2518,9 +2518,13 @@ end module cuda_rt
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
-      ! KJ Run X: enable ifields to seed u/v/w/s from cm1rst_000005_*
-      ! (mirrors codex-pi ifields=1 namelist setting).
-      ifields = 1
+      ! KJ Run X: ifields=0 for cold-start (no restart-from-fields).
+      ! The cm1rst_000005_* spinup was written with ptype=0 (numq=1) so
+      ! ptype=7 (numq=2 incl. qc) read fails with FIO-F-253. Cold-start
+      ! sidesteps the restart-format mismatch; spinup runs from initial
+      ! sounding for ~50-100 free-fall times before turbulence is dev'd.
+      ! (My previous Run X commit set ifields=1 — that's reverted here.)
+      ifields = 0
       IF (ifields.eq.1) THEN
 
          rho = 0.0
