@@ -116,6 +116,45 @@ ifeq (${FC},nvfortran)
     endif
 endif
 
+# Treat the OpenMPI wrapper around NVFORTRAN the same as nvfortran itself
+ifeq (${FC},mpif90)
+    OPTS         += -Mfree -Ktrap=none -Mautoinline -Minline=reshape -Kieee -Mnofma
+    CPP          += cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding
+    ifeq (${DEBUG_L},true)
+         OPTS    += -g -O0
+         DM      += -D_B4B
+    else
+         OPTS    += -g -O2
+    endif
+    ifeq (${USE_DOUBLE_L},true)
+         OPTS    += -r8
+         DP      += -DDP
+    endif
+    ifeq (${USE_OPENMP_L},true)
+         OPTS    += -mp
+         OMP     += -DOPENMP
+    endif
+    ifeq (${USE_OPENACC_L},true)
+        ifeq (${DEBUG_L},true)
+            ifeq (${GPU_TYPE_L},a100)
+                OPTS += -acc -gpu=cc80,lineinfo,nofma,autocompare,math_uniform
+            else
+                OPTS += -acc -gpu=cc70,lineinfo,nofma,autocompare,math_uniform
+            endif
+        else
+            ifeq (${GPU_TYPE_L},a100)
+                OPTS += -acc -gpu=cc80,lineinfo,nofma,math_uniform -Minfo=accel -cudalib=cutensor
+            else
+                OPTS += -acc -gpu=cc70,lineinfo,nofma,math_uniform -Mpcast -Minfo=accel
+            endif
+        endif
+        DM       += -D_OPENACC
+    endif
+    ifeq (${USE_CUDAMEM_L},true)
+        DM       += -D_CUDAMEM
+    endif
+endif
+
 #-----------------------------------------------------------------------------
 #  PGI compiler
 #-----------------------------------------------------------------------------
@@ -165,6 +204,18 @@ ifeq (${FC},ifort)
 endif
 
 #-----------------------------------------------------------------------------
+#  Intel ifx compiler (oneAPI 2025+; ifort was dropped in intel/25.x)
+#-----------------------------------------------------------------------------
+ifeq (${FC},ifx)
+    OPTS         += -g -O2 -march=core-avx2 -assume byterecl -fp-model precise -ftz -init=snan,arrays -traceback -no-fma
+    CPP          += cpp -C -P -traditional -Wno-invalid-pp-token -ffreestanding
+    ifeq (${USE_OPENMP_L},true)
+        OPTS     += -qopenmp
+        OMP      += -DOPENMP
+    endif
+endif
+
+#-----------------------------------------------------------------------------
 #  GNU compiler
 #-----------------------------------------------------------------------------
 ifeq (${FC},gfortran)
@@ -201,8 +252,8 @@ endif
 #-----------------------------------------------------------------------------
 ifeq (${USE_MPI_L},true)
     DM           += -DMPI
-    #override FC  = mpif90
-    override FC  = mpiifort -fc=ifx -fno-lto
+    override FC  = mpif90
+    #override FC  = mpiifort -fc=ifx -fno-lto
 endif
 
 $(info $$DEBUG_L is [${DEBUG_L}])
