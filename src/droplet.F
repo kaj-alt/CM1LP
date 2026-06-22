@@ -209,6 +209,9 @@
       integer :: fd_nan_u, fd_nan_v, fd_nan_w
       integer :: fd_nan_k_lo, fd_nan_k_hi
       real :: fd_umin, fd_umax, fd_vmin, fd_vmax, fd_wmin, fd_wmax
+      ! v9 dpten-scan locals (same routine-top reason as fd_*).
+      integer :: ds_vdim, ds_ii, ds_jj, ds_kk, ds_cnt
+      integer :: ds_imin, ds_imax, ds_jmin, ds_jmax, ds_kmin, ds_kmax
       integer(i8) :: nactive_new
       integer :: badActive, firstBad, lastBad
       integer :: badCompact, firstBadCompact, lastBadCompact
@@ -692,6 +695,51 @@
     END DO nploop
     !$acc end parallel
     !$acc wait
+
+    ! ---- v9 dpten-scan ----
+    ! Scan dpten(:,:,:,3:5) for NaN cells right after the project_feedback
+    ! deposition loop. The 8-cell trilinear-stencil pattern from a single
+    ! bad particle shows up here on the step the NaN is written, BEFORE
+    ! solve3.F:1060 adds dt*dpten to u3d/v3d/w3d. v8 only caught the
+    ! propagated NaN at the NEXT step's solve1 entry (TAP_0); this puts
+    ! the trap on the originating step and identifies (rank, dim, bbox).
+    ! Only prints when a NaN is found, so quiet during clean steps.
+    do ds_vdim = 3, 5
+      ds_cnt  = 0
+      ds_imin = ni + 1; ds_imax = 0
+      ds_jmin = nj + 1; ds_jmax = 0
+      ds_kmin = nk + 1; ds_kmax = 0
+
+      !$acc parallel loop collapse(3) default(present)                         &
+      !$acc   reduction(+:ds_cnt)                                              &
+      !$acc   reduction(min:ds_imin,ds_jmin,ds_kmin)                           &
+      !$acc   reduction(max:ds_imax,ds_jmax,ds_kmax)
+      do ds_kk = 1, nk
+      do ds_jj = 1, nj
+      do ds_ii = 1, ni
+        if (dpten(ds_ii,ds_jj,ds_kk,ds_vdim) /= dpten(ds_ii,ds_jj,ds_kk,ds_vdim)) then
+          ds_cnt  = ds_cnt + 1
+          if (ds_ii < ds_imin) ds_imin = ds_ii
+          if (ds_ii > ds_imax) ds_imax = ds_ii
+          if (ds_jj < ds_jmin) ds_jmin = ds_jj
+          if (ds_jj > ds_jmax) ds_jmax = ds_jj
+          if (ds_kk < ds_kmin) ds_kmin = ds_kk
+          if (ds_kk > ds_kmax) ds_kmax = ds_kk
+        endif
+      enddo
+      enddo
+      enddo
+
+      if (ds_cnt > 0) then
+        write(*,'(a,i8,a,es14.6,a,i4,a,i2,a,i8,a,i0,a,i0,a,i0,a,i0,a,i0,a,i0,a)') &
+          ' DPTEN_NAN nstep=', nstep, ' mtime=', mtime, ' myid=', myid,    &
+          ' dim=', ds_vdim, ' cnt=', ds_cnt,                               &
+          ' i=[', ds_imin, ',', ds_imax, '] j=[', ds_jmin, ',', ds_jmax,   &
+          '] k=[', ds_kmin, ',', ds_kmax, ']'
+      endif
+    enddo
+    ! ---- end v9 dpten-scan ----
+
     if (errcode .gt. 0) then
        print *,'BE_VALIDATOR_FAIL myid=', myid, &
                ' errcode=', errcode, &
