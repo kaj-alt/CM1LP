@@ -133,8 +133,9 @@
 
       ELSEIF( testcase.eq.16)THEN
 
-	! Pi chamber DNS
-        g      = 0.545
+	! Pi chamber DNS — KJ Run X: effective gravity 5.41 (Ra = 10^9 at 18K dT)
+	! vs advisor's default 0.545 (Ra = 10^8). Mirrors codex-pi pi_grav=5.41.
+        g      = 5.41
         rd     = 287.04
         cp     = 1005.7
         cp_dp  = 1005.7d0

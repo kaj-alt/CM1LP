@@ -1053,12 +1053,14 @@
               v3d(i,j,k)=v3d(i,j,k)+dt_dropsub*dpten(i,j,k,4)
               w3d(i,j,k)=w3d(i,j,k)+dt_dropsub*dpten(i,j,k,5)
           
+	      ! KJ Run X: vapor sink disabled. This case uses saturated sidewall
+	      ! BCs (wbc=ebc=sbc=nbc=4 with ptc_n/s/e/w=293.15) instead of the
+	      ! domain-wide vapor sink that compensates periodic sidewalls.
+	      ! Mirrors codex-pi humidity_mode=2 (sat-sidewall branch).
 	      !For Pi chamber DNS with periodic sidewalls, need a vapor sink
-	      !if (testcase.eq.16 .and. nbc.eq.1 .and. ebc.eq.1 .and. sbc.eq.1 .and. wbc.eq.1) then
-	      if (testcase.eq.16) then
-                 !q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*7.8e-5  For H = 0.2
-                 q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*6.2e-6
-	      end if
+	      !if (testcase.eq.16) then
+	      !   q3d(i,j,k,nqv)=q3d(i,j,k,nqv)-dt_dropsub*6.2e-6
+	      !end if
             enddo
             enddo
             enddo

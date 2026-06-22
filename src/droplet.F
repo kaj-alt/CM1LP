@@ -5378,7 +5378,13 @@
                local_seed = floor(29.*mtime) + (97*myid) + (7*j)
                call new_RandomNumberSequence(randomNumbers, local_seed)
 
-               rad_init = 2.0e-7
+               ! KJ Run X: inject at Kohler-equilibrium wet radius for NaCl
+               ! 70 nm dry @ 95% RH (instead of advisor's 200 nm default).
+               !   r_dry  = 35 nm, kappa = 1.233 (= kappa_s), RH = 0.95.
+               !   Kelvin term ~1 at these sizes, so r_wet/r_dry = (1+19*kappa)^(1/3)
+               !     = 24.43^(1/3) = 2.901  ->  r_wet = 1.015e-7 m.
+               ! Mirrors codex-pi (dry_diam_sp=70nm + init_hydration_rh_frac=0.95).
+               rad_init = 1.015e-7
 
                !Random location
                rand = getRandomReal(randomNumbers)
@@ -5401,7 +5407,14 @@
             pdata(np,prsigsgs) = 0.0
             pdata(np,prrp) = rad_init
             pdata(np,prrp0) = rad_init
-            salinity = 0.066
+            ! KJ Run X: solute mass for NaCl 70nm dry. With rad_init=1.015e-7
+            ! (wet) and rho_solute=2000 (constants.F), m_s = rho_solute *
+            ! (4/3)*pi*r_dry^3 = 3.59e-19 kg. Advisor's formula treats salinity
+            ! as m_s/(rho_w*V_wet), so:
+            !   salinity = m_s / (rho_w * (4/3)*pi*r_wet^3)
+            !            = 3.59e-19 / (1000 * 4.38e-21) = 0.082.
+            ! Mirrors codex-pi (nspecies=1, kappa_sp=1.233, dry_diam_sp=70nm).
+            salinity = 0.082
             pdata(np,prms) = salinity*rhow*4.0/3.0*pi*pdata(np,prrp)**3
             pdata(np,prkap) = kappa_s
             pdata(np,prtp) = 290.0  

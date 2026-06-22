@@ -2518,7 +2518,9 @@ end module cuda_rt
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
-      ifields = 0
+      ! KJ Run X: enable ifields to seed u/v/w/s from cm1rst_000005_*
+      ! (mirrors codex-pi ifields=1 namelist setting).
+      ifields = 1
       IF (ifields.eq.1) THEN
 
          rho = 0.0
