@@ -5290,7 +5290,8 @@
                         prrp,prrp0,prtp,prms,prkap,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive,numprocs,nparcelsMax, &
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
-                        drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz
+                        drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
+                        injection_rate_scale
       use constants
       use MersenneTwister_mod
 #ifdef MPI
@@ -5320,7 +5321,7 @@
 
       integer :: local_seed
 
-      my_reintro_tmp = 0.01*(1./60.)*(10.**6.)*time_since_inject*4 !total for a 4m^3 vol chamber
+      my_reintro_tmp = injection_rate_scale*0.01*(1./60.)*(10.**6.)*time_since_inject*4 !total for a 4m^3 vol chamber
 
 #ifdef MPI
       my_reintro = floor(my_reintro_tmp/sngl(numprocs))

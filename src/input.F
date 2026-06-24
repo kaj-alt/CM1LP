@@ -219,10 +219,17 @@
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
            drop_inject_elapse,drop_inject_time
 
+      ! Scale factor on the hardcoded Pi-chamber injection rate (droplet.F droplet_injection_pi).
+      ! 1.0 (default) preserves baseline 0.01 #/cc/min. Increase to inject more superdroplets
+      ! per second (with proportionally smaller drop_mult to hold the total physical injection
+      ! rate constant, spreading the per-cell vapor sink across more grid cells).
+      real :: injection_rate_scale = 1.0
+
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
-      !$acc                 drop_inject_elapse,drop_inject_time)
+      !$acc                 drop_inject_elapse,drop_inject_time,              &
+      !$acc                 injection_rate_scale)
 
 !-----------------------------------------------------------------------
 
@@ -344,7 +351,7 @@
               prcl_rho,prcl_qsat,prcl_sfc,                                    &
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
-	      drop_evap,drop_traj,drop_sgs_opt
+	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &

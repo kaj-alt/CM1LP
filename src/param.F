@@ -306,6 +306,7 @@
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
+      call bcast_real(injection_rate_scale)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
