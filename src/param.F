@@ -327,7 +327,7 @@
       ! at droplet.F:5422 (pdata(np,prmult) = drop_mult). Without this sync the
       ! device-side drop_mult is uninitialized -> particles get prmult=0 (or garbage)
       ! -> BE_integration FATAL on GPU at any nontrivial injection load.
-      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp)
+      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)

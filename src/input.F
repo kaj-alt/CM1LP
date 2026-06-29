@@ -231,13 +231,17 @@
       real :: rho_sp(max_species) = (/ 2160.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: dry_diam_sp(max_species) = (/ 70.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: frac_sp(max_species) = (/ 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      ! Inject droplets at their Kohler-equilibrium wet radius for this RH (chamber default 0.95).
+      ! Each species' wet radius is computed per-injection from kappa_sp(isp), dry_diam_sp(isp).
+      ! Set to 0 to inject at dry radius (will trip BE_integration LV_solver if r_dry < table lower bound).
+      real :: init_hydration_rh_frac = 0.95
 
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time,              &
       !$acc                 injection_rate_scale)
-      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
 
 !-----------------------------------------------------------------------
 
@@ -360,7 +364,7 @@
               nparcelsInit,nparcelsMax,drop_mult,                             &
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
-              nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
+              nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &

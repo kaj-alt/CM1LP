@@ -5295,7 +5295,7 @@
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
                         injection_rate_scale, &
-                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp
+                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac
       use constants
       use MersenneTwister_mod
 #ifdef MPI
@@ -5322,7 +5322,7 @@
 
       integer :: iter,nbin,num_create,j,ierr
       integer :: isp, isp_try
-      real :: cum_frac, dry_rad_sp
+      real :: cum_frac, dry_rad_sp, r_wet_sp
 
       integer :: local_seed
 
@@ -5384,13 +5384,8 @@
                local_seed = floor(29.*mtime) + (97*myid) + (7*j)
                call new_RandomNumberSequence(randomNumbers, local_seed)
 
-               ! KJ Run X: inject at Kohler-equilibrium wet radius for NaCl
-               ! 70 nm dry @ 95% RH (instead of advisor's 200 nm default).
-               !   r_dry  = 35 nm, kappa = 1.233 (= kappa_s), RH = 0.95.
-               !   Kelvin term ~1 at these sizes, so r_wet/r_dry = (1+19*kappa)^(1/3)
-               !     = 24.43^(1/3) = 2.901  ->  r_wet = 1.015e-7 m.
-               ! Mirrors codex-pi (dry_diam_sp=70nm + init_hydration_rh_frac=0.95).
-               rad_init = 1.015e-7
+               ! Wet radius computed per-species below from kappa_sp + dry_diam_sp + init_hydration_rh_frac.
+               ! (rad_init is unused on the N-species path — see lines below.)
 
                !Random location
                rand = getRandomReal(randomNumbers)
@@ -5426,8 +5421,19 @@
             pdata(np,prrhosol) = rho_sp(isp)
             dry_rad_sp = dry_diam_sp(isp) * 0.5
             pdata(np,prms) = rho_sp(isp) * (4.0/3.0) * pi * dry_rad_sp**3
-            pdata(np,prrp) = dry_rad_sp
-            pdata(np,prrp0) = dry_rad_sp
+            ! Inject at Kohler-equilibrium wet radius (dilute limit, Kelvin term ~1):
+            !   r_wet/r_dry = (1 + (RH/(1-RH))*kappa)^(1/3)
+            ! For NaCl (kappa=1.233) at RH=0.95: r_wet = 2.901 * r_dry = 1.015e-7 m for r_dry=35 nm.
+            ! init_hydration_rh_frac=0 (or any value where 1-RH<=0) keeps dry radius (use with care:
+            ! r_dry below BE_integration's LV_solver lookup-table lower bound will crash the integrator).
+            if (init_hydration_rh_frac .gt. 0.0 .and. init_hydration_rh_frac .lt. 1.0) then
+               r_wet_sp = dry_rad_sp * (1.0 + (init_hydration_rh_frac/(1.0-init_hydration_rh_frac)) &
+                                              * kappa_sp(isp))**(1.0/3.0)
+            else
+               r_wet_sp = dry_rad_sp
+            end if
+            pdata(np,prrp)  = r_wet_sp
+            pdata(np,prrp0) = r_wet_sp
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0
