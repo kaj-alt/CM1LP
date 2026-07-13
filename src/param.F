@@ -319,6 +319,10 @@
       call bcast_real(rho_sp,1,max_species)
       call bcast_real(dry_diam_sp,1,max_species)
       call bcast_real(frac_sp,1,max_species)
+      ! init_hydration_rh_frac was never broadcast (latent since 4d0b2a3):
+      ! non-rank-0 processes kept the 0.95 default, so any namelist value
+      ! other than 0.95 gave rank-inconsistent injection radii.
+      call bcast_real(init_hydration_rh_frac)
       if(dowr) then
         frac_sum = 0.0
         do i=1,nspecies
