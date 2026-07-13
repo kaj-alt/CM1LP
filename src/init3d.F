@@ -500,6 +500,12 @@
                 pdata(i,prrhosol) = rho_solute
              end if
 
+             ! dissolution kinetics: starter parcel is initialized wet
+             ! (dissolved); species-1 solubility/diffusivity for bookkeeping
+             pdata(i,prmscore) = 0.0
+             pdata(i,prsol) = solubility_sp(1)
+             pdata(i,prdaw) = DAw_sp(1)
+
              dzbot = max(zf(iloc,jloc,kb+1)-zf(iloc,jloc,kb),1.0e-6)
              dztop = max(zf(iloc,jloc,ke+1)-zf(iloc,jloc,ke),1.0e-6)
              ! Radius can round away in single precision, so initialize off exact wall/full levels.

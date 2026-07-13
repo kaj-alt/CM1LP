@@ -82,6 +82,7 @@
               prdbz,prb,prvpg,przv,prrho,prqsl,prqsi,prznt,prust,przs,prsig,  &
               prvpx,prvpy,prvpz,prusgs,prvsgs,prwsgs,prsigsgs,prrp,prrp0,     &
               prms,prkap,prrhosol,prtp,prmult,pract,                          &
+              prmscore,prsol,prdaw,                                           &
               prpidx,prprocidx,                                               &
               nql1,nql2,nqs1,nqs2,nnc1,nnc2,nvl1,nvl2,nzl1,nzl2,              &
               nbudget,budrain,cm1setup,testcase,                              &
@@ -175,6 +176,7 @@
       !$acc                 nqv,nqc,nqr,nqi,nqs,nqg,bbc,tbc,wbc,ebc,sbc,nbc,  &
       !$acc                 imove,prvpx,prvpy,prvpz,prusgs,prvsgs,            &
       !$acc                 prwsgs,prsigsgs,prrp,prrp0,prms,prkap,prrhosol,prtp, &
+      !$acc                 prmscore,prsol,prdaw,                             &
       !$acc                 prx,pry,prz,prsig,ngxy,ngz,ptype,pru,prv,prw,     &
       !$acc                 ibw,ibe,ibs,ibn,ibc,iec,jbc,jec,kbc,kec,          &
       !$acc                 ibt,iet,jbt,jet,kbt,ket,two_way_coupling,         &
@@ -241,6 +243,17 @@
       ! Set to 0 to inject at dry radius (will trip BE_integration LV_solver if r_dry < table lower bound).
       real :: init_hydration_rh_frac = 0.95
 
+      ! --- Dissolution kinetics (Asa-Awuku & Nenes 2007) — experimental ---
+      ! 1 = per-particle undissolved core with quasi-steady algebraic dissolution;
+      ! the Raoult term is capped at the kinetic surface concentration C*
+      ! (their eq. 17, omega = Dp/Dc, G = mass+thermal, 0.5*Ceq floor).
+      ! REQUIRES init_hydration_rh_frac = 0 (dry injection) — param.F aborts otherwise.
+      integer :: dissolution_kinetics = 0
+      ! Solubility (kg solute per m^3 water) and aqueous diffusivity (m^2/s) per species.
+      ! Defaults: NaCl (360 kg/m^3; D_Aw from AA&N Table 1).
+      real :: solubility_sp(max_species) = (/ 360.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+      real :: DAw_sp(max_species) = (/ 1.26e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
+
       ! Field-init (a60ed41 port): 1 = seed u/v/w/scalars from a spinup's
       ! restart field files via read_fields (follows restart_filetype+rstnum),
       ! with the model clock starting at t=0. 0 (default) = cold start.
@@ -252,6 +265,7 @@
       !$acc                 drop_inject_elapse,drop_inject_time,              &
       !$acc                 injection_rate_scale)
       !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
+      !$acc declare create (dissolution_kinetics,solubility_sp,DAw_sp)
 
 !-----------------------------------------------------------------------
 
@@ -375,6 +389,7 @@
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
+              dissolution_kinetics,solubility_sp,DAw_sp,                      &
               coal_enabled,coal_kernel,coal_Ndx,coal_Ndy,coal_Ndz
       namelist /param14/                                                      &
               dodomaindiag,diagfrq

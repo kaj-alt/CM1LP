@@ -2635,7 +2635,8 @@
           prz,pru,prv, &
           prw,prt,prqv,prprs,prrho,pract,prtime,prmult,ni,nj,mywest, &
           mysw,mynw,myeast,myse,myne,mysouth,mynorth,nparcelsLocal, &
-          myid,dx,dy,pi_sp,pi_dp,ngxy,nbc,sbc,ebc,wbc,tsk0,drop_evap,drop_sgs_opt
+          myid,dx,dy,pi_sp,pi_dp,ngxy,nbc,sbc,ebc,wbc,tsk0,drop_evap,drop_sgs_opt, &
+          prmscore,prsol,prdaw,dissolution_kinetics
       use constants , only : rhow,rhow_dp,undefined_index,cpl,cpl_dp,cp_dp,i8
       use comm_module
       use parcel_module
@@ -2683,6 +2684,7 @@
       integer :: i,j,k,ibin,ibin_res
       double precision :: taup,volp,rhop,tmp_coeff
       double precision :: taup_scale,dt_nondim
+      double precision :: mscore_d,raoult_dis,cstar_d,rcore_d
       double precision :: guess
       double precision :: rt_zeros(2),rt_start(2)
       logical :: is_local
@@ -2710,7 +2712,24 @@
       xrhs2 = pdata(np,prvpy)
       xrhs3 = pdata(np,prvpz)
       volp  = (4.0d0/3.0d0)*pi_dp*dble(pdata(np,prrp))**3
-      rhop  = (dble(pdata(np,prms))+volp*rhow_dp)/volp  !Density including the solute mass
+
+      ! --- dissolution kinetics (AA&N 2007): quasi-steady core state ---
+      mscore_d   = 0.0d0
+      raoult_dis = -1.0d0
+      cstar_d    = 0.0d0
+      rcore_d    = 0.0d0
+      if (dissolution_kinetics.eq.1) then
+        mscore_d = dble(pdata(np,prmscore))
+        if (mscore_d.gt.0.0d0) then
+          call dissolution_state(dble(pdata(np,prrp)),mscore_d, &
+                                 dble(pdata(np,prkap)),dble(pdata(np,prrhosol)), &
+                                 dble(pdata(np,prsol)),dble(pdata(np,prdaw)), &
+                                 dble(prsval),dble(tval),dble(qval), &
+                                 cstar_d,raoult_dis,rcore_d)
+        end if
+      end if
+
+      rhop  = (dble(pdata(np,prms))+max(volp-mscore_d/dble(pdata(np,prrhosol)),0.0d0)*rhow_dp)/volp  !Density including the solute mass (core displaces water)
       taup  = rhop*(2.0d0*dble(pdata(np,prrp)))**2/(18.0d0*dble(rhoval)*dble(viscosity))
 
       !Original, for calculating changes in momentum, mass, and energy
@@ -2777,9 +2796,15 @@
 
       !Gives initial guess into nonlinear solver
       !mflag = 0, has equilibrium radius; mflag = 1, no equilibrium (uses itself as initial guess)
+      if (raoult_dis.ge.0.0d0) then
+         ! dissolution-limited particle: the full-kappa Kohler equilibrium is not
+         ! valid with an undissolved core; start Newton from the current state.
+         mflag = 1
+      else
       call rad_solver2(guess,mflag,prsval,rhoval,tval,qval, &
                        pdata(np,prtp),pdata(np,prms),pdata(np,prkap), &
                        dble(pdata(np,prrhosol)),pdata(np,prrp),np)
+      end if
 
       !Nondimensionalize the guesses
       if (mflag.eq.0) then
@@ -2796,6 +2821,7 @@
                            dble(rhoval),dble(tval),dble(qval), &
                            dble(pdata(np,prtp)),dble(pdata(np,prms)), &
                            dble(pdata(np,prkap)),dble(pdata(np,prrhosol)), &
+                           mscore_d,raoult_dis, &
                            dble(pdata(np,prrp)),np)
 
       !If Gauss-Newton failed to converge, flag is set to 1 and try Levenberg-Marquardt algorithm
@@ -2805,7 +2831,8 @@
                         rt_zeros,flag,dble(prsval),dble(rhoval), &
                         dble(tval),dble(qval),dble(pdata(np,prtp)), &
                         dble(pdata(np,prms)),dble(pdata(np,prkap)), &
-                        dble(pdata(np,prrhosol)),dble(pdata(np,prrp)),np)
+                        dble(pdata(np,prrhosol)),mscore_d,raoult_dis, &
+                        dble(pdata(np,prrp)),np)
       end if
 
       !In rare cases both nonlinear solvers fail to converge
@@ -2822,6 +2849,16 @@
       !Now redimsionalize
       pdata(np,prrp) = rt_zeros(1)*pdata(np,prrp)
       pdata(np,prtp) = rt_zeros(2)*pdata(np,prtp)
+
+      ! dissolution kinetics: radius cannot shrink below the solid core; then
+      ! re-diagnose the core from the quasi-steady mass balance (one-way).
+      if (dissolution_kinetics.eq.1 .and. mscore_d.gt.0.0d0) then
+        pdata(np,prrp) = max(pdata(np,prrp), sngl(rcore_d))
+        call dissolution_core_update(dble(pdata(np,prrp)),dble(pdata(np,prms)), &
+                                     mscore_d,cstar_d,dble(pdata(np,prsol)), &
+                                     dble(pdata(np,prrhosol)))
+        pdata(np,prmscore) = sngl(mscore_d)
+      end if
 
       else !If droplet evaporation is turned off, leave radius unchanged and update temperature via BE
 
@@ -5323,6 +5360,131 @@
 
       end subroutine find_vertical_location_index
 
+      subroutine dissolution_state(rp,mscore,kappa_p,rho_solute_p, &
+                                   sol_p,daw_p,prsval,tval,qval, &
+                                   cstar,raoult_dis,rcore)
+      !$acc routine seq
+      ! Asa-Awuku & Nenes (2007) quasi-steady dissolution state.
+      ! Given wet radius rp and undissolved core mass mscore, computes the
+      ! kinetic surface concentration C* (their eq. 17: omega = Dp/Dc,
+      ! coefficient 0.8, floor 0.5*Ceq) and the Raoult exponent term
+      ! kappa*C*/rho_sol that replaces kappa*V_sd/V_w in the Kohler factor.
+      ! Validated against their Fig. 7 in
+      ! results/notebooks/dissolution_kinetics_AAN2007_fig7.ipynb.
+      use constants, only : rhow_dp,mw,ru,surften,lv1_dp,lv2_dp
+      use input, only : pi_dp
+      use cm1libs, only : drslf,deslf
+      implicit none
+      double precision, intent(in) :: rp,mscore,kappa_p,rho_solute_p
+      double precision, intent(in) :: sol_p,daw_p,prsval,tval,qval
+      double precision, intent(out) :: cstar,raoult_dis,rcore
+
+      double precision :: s_loc,esa,dv,ka_air,lhv,gkin,kelvin,seq,drive,beta
+      integer :: it
+
+      rcore = (3.0d0*mscore/(4.0d0*pi_dp*rho_solute_p))**(1.0d0/3.0d0)
+
+      ! local supersaturation (mixing-ratio based)
+      s_loc = qval/max(drslf(prsval,tval),1.0d-12) - 1.0d0
+
+      ! kinetic growth parameter G = mass-transfer + thermal terms [s/m^2]
+      ! (mass-only G overshoots the AA&N Fig. 7 kinetic lift ~2.4x)
+      esa    = deslf(prsval,tval)
+      dv     = 2.11d-5*(tval/273.15d0)**1.94d0*(101325.0d0/prsval)
+      ka_air = 2.55d-2
+      lhv    = lv1_dp - lv2_dp*tval
+      gkin   = rhow_dp*ru*tval/(4.0d0*esa*dv*mw) &
+             + lhv*rhow_dp/(4.0d0*ka_air*tval)*(lhv*mw/(ru*tval)-1.0d0)
+
+      ! fixed point for (s_eq, C*): 3 passes converge at these magnitudes
+      kelvin = 2.0d0*mw*surften/(ru*rhow_dp*max(rp,rcore)*tval)
+      seq = 0.0d0
+      do it = 1,3
+        drive = max(s_loc - seq, 0.0d0)
+        beta  = 0.8d0*(rp/max(rcore,1.0d-12))*drive/(4.0d0*gkin*daw_p)
+        cstar = max(0.5d0*sol_p, sol_p/(1.0d0+beta))
+        seq   = kelvin - kappa_p*cstar/rho_solute_p
+      end do
+
+      raoult_dis = kappa_p*cstar/rho_solute_p
+
+      end subroutine dissolution_state
+
+!----------------------------------------------------------------------
+
+      subroutine dissolution_core_update(rp,m_s,mscore,cstar,sol_p,rho_solute_p)
+      !$acc routine seq
+      ! Quasi-steady algebraic core mass balance (AA&N 2007 eqs. 21-22):
+      ! 1/r shell concentration profile pinned to sol_p (saturation) at the
+      ! core surface and cstar at the droplet surface; bisection for the core
+      ! radius that stores the remaining solute. One-way (core only shrinks).
+      use input, only : pi_dp
+      implicit none
+      double precision, intent(in) :: rp,m_s,cstar,sol_p,rho_solute_p
+      double precision, intent(inout) :: mscore
+
+      double precision :: rc_dry,lo,hi,mid,flo,fhi,fmid,mcore_new
+      integer :: it
+
+      rc_dry = (3.0d0*m_s/(4.0d0*pi_dp*rho_solute_p))**(1.0d0/3.0d0)
+
+      flo = core_balance(1.0d-12,rp,m_s,cstar,sol_p,rho_solute_p)
+      if (flo .ge. 0.0d0) then
+        ! even a vanishing core over-supplies the shell: fully dissolved
+        mscore = 0.0d0
+        return
+      end if
+      hi  = min(rc_dry*0.999999d0, rp*0.999999d0)
+      fhi = core_balance(hi,rp,m_s,cstar,sol_p,rho_solute_p)
+      if (fhi .lt. 0.0d0) then
+        ! droplet barely wet (rp ~ rc_dry): no meaningful shell yet
+        return
+      end if
+
+      lo = 1.0d-12
+      do it = 1,48
+        mid  = 0.5d0*(lo+hi)
+        fmid = core_balance(mid,rp,m_s,cstar,sol_p,rho_solute_p)
+        if (fmid .lt. 0.0d0) then
+          lo = mid
+        else
+          hi = mid
+        end if
+      end do
+      mcore_new = rho_solute_p*(4.0d0/3.0d0)*pi_dp*(0.5d0*(lo+hi))**3
+      mscore = min(mscore, mcore_new)
+
+      end subroutine dissolution_core_update
+
+!----------------------------------------------------------------------
+
+      function core_balance(rc,rp,m_s,cstar,sol_p,rho_solute_p) result(f)
+      !$acc routine seq
+      ! f = m_core(rc) + m_shell(profile) - m_s ; roots give the QS core.
+      use input, only : pi_dp
+      implicit none
+      double precision, intent(in) :: rc,rp,m_s,cstar,sol_p,rho_solute_p
+      double precision :: f
+      double precision :: bb,aa,mdis
+
+      if (rc .le. 0.0d0) then
+        mdis = cstar*(4.0d0/3.0d0)*pi_dp*rp**3
+        f = mdis - m_s
+        return
+      end if
+      if (rc .ge. rp) then
+        f = rho_solute_p*(4.0d0/3.0d0)*pi_dp*rc**3 - m_s
+        return
+      end if
+      bb = (sol_p - cstar)*rc*rp/(rp - rc)
+      aa = cstar - bb/rp
+      mdis = (4.0d0/3.0d0)*pi_dp*aa*(rp**3-rc**3) + 2.0d0*pi_dp*bb*(rp**2-rc**2)
+      f = rho_solute_p*(4.0d0/3.0d0)*pi_dp*rc**3 + mdis - m_s
+
+      end function core_balance
+
+!----------------------------------------------------------------------
+
       subroutine rad_solver2(guess,mflag,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius,np)
       !$acc routine seq
       use input , only : pi_dp
@@ -5359,13 +5521,13 @@
 
       subroutine gauss_newton_2d(diffnorm,dt_nondim,taup_scale,rt_start, &
                                  rt_zeros,flag,prsval,rhoval,tval,qval, &
-                                 Tp,m_s,kappa_p,rho_solute_p,radius,np)
+                                 Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np)
         !$acc routine seq
 
         implicit none
 
         double precision, intent(in) :: diffnorm,dt_nondim,taup_scale,rt_start(2)
-        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
+        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius
         double precision, intent(out) :: rt_zeros(2)
         integer, intent(out) :: flag
         integer, intent(in) :: np
@@ -5400,11 +5562,11 @@
                 !Compute the RHS of the droplet temp and radius equations
                 call ie_vrt_nd(diffnorm,v1(1),v1(2),fv1,dt_nondim, &
                                taup_scale,prsval,rhoval,tval,qval, &
-                               Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
+                               Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
                 !Approximate the Jacobian
                 call jacob_approx_2d(diffnorm,v1(1),v1(2),dt_nondim,J, &
                                      taup_scale,prsval,rhoval,tval,qval, &
-                                     Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
+                                     Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
 
               if( abs(J(1,1)).gt.1.0d76 ) flag = 1
               if( abs(J(1,2)).gt.1.0d76 ) flag = 1
@@ -5481,12 +5643,12 @@
 
       subroutine LV_solver(diffnorm,dt_nondim,taup_scale,rt_start, &
                            rt_zeros,flag,prsval,rhoval,tval,qval, &
-                           Tp,m_s,kappa_p,rho_solute_p,radius,np)
+                           Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np)
         !$acc routine seq
         implicit none
 
         double precision, intent(in) :: diffnorm,dt_nondim,taup_scale,rt_start(2)
-        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
+        double precision, intent(in) :: prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius
         double precision, intent(out) :: rt_zeros(2)
         integer, intent(out) :: flag
         integer, intent(in) :: np
@@ -5528,11 +5690,11 @@
         !Approximate the Jacobian of the system
         call jacob_approx_2d(diffnorm,v1(1),v1(2),dt_nondim,J, &
                              taup_scale,prsval,rhoval,tval,qval, &
-                             Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
+                             Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
         !Compute the RHS of the temperature and radius equations
         call ie_vrt_nd(diffnorm,v1(1),v1(2),fv1,dt_nondim,taup_scale, &
                        prsval,rhoval,tval,qval,Tp,m_s,kappa_p, &
-                       rho_solute_p,radius,np,flag)
+                       rho_solute_p,mscore,raoult_dis,radius,np,flag)
 
       if( abs(J(1,1)).gt.1.0d76 ) flag = 1
       if( abs(J(1,2)).gt.1.0d76 ) flag = 1
@@ -5585,7 +5747,7 @@
         !Use the RHS to update the lambda parameter
         call ie_vrt_nd(diffnorm,rt_zeros(1),rt_zeros(2),fv2,dt_nondim, &
                        taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                       kappa_p,rho_solute_p,radius,np,flag)
+                       kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
 
       if( abs(fv1(1)).gt.1.0d76 ) flag = 1
       if( abs(fv1(2)).gt.1.0d76 ) flag = 1
@@ -5635,12 +5797,12 @@
 
       subroutine jacob_approx_2d(diffnorm,rnext,tnext,dt_nondim,J, &
                                  taup_scale,prsval,rhoval,tval,qval, &
-                                 Tp,m_s,kappa_p,rho_solute_p,radius,np,flag)
+                                 Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
         !$acc routine seq
         implicit none
         integer :: n
 
-        double precision, intent(in) :: diffnorm,rnext,tnext,dt_nondim,taup_scale,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
+        double precision, intent(in) :: diffnorm,rnext,tnext,dt_nondim,taup_scale,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius
         double precision, intent(out), dimension(1:2, 1:2) :: J
         double precision :: diff,v_output(3),rt_output(2),xper(2),fxper(2),ynext(2),xper2(2),fxper2(2)
         integer, intent(in) :: np
@@ -5655,7 +5817,7 @@
         !Evaluate RHS
         call ie_vrt_nd(diffnorm,rnext,tnext,rt_output,dt_nondim, &
                        taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                       kappa_p,rho_solute_p,radius,np,flag)
+                       kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
 
         xper(1) = ynext(1)
         xper(2) = ynext(2)
@@ -5669,10 +5831,10 @@
 
            call ie_vrt_nd(diffnorm,xper(1),xper(2),fxper,dt_nondim, &
                           taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                          kappa_p,rho_solute_p,radius,np,flag)
+                          kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
            call ie_vrt_nd(diffnorm,xper2(1),xper2(2),fxper2,dt_nondim, &
                           taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                          kappa_p,rho_solute_p,radius,np,flag)
+                          kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
 
            !Use these differences to compute the Jacobian
            J(1,n) = (fxper(1)-rt_output(1))/diff
@@ -5685,7 +5847,7 @@
 
       subroutine ie_vrt_nd(diffnorm,tempr,tempt,rt_output,dt_nondim, &
                            taup_scale,prsval,rhoval,tval,qval,Tp,m_s, &
-                           kappa_p,rho_solute_p,radius,np,flag)
+                           kappa_p,rho_solute_p,mscore,raoult_dis,radius,np,flag)
       !$acc routine seq
       use constants, only : rhow_dp,mw,ru,surften, &
                             cp_dp,cpl_dp,lv1_dp,lv2_dp
@@ -5693,7 +5855,7 @@
       use cm1libs , only : drslf,deslf
       implicit none
 
-      double precision, intent(in) :: diffnorm,tempr,tempt,taup_scale,dt_nondim,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,radius
+      double precision, intent(in) :: diffnorm,tempr,tempt,taup_scale,dt_nondim,prsval,rhoval,tval,qval,Tp,m_s,kappa_p,rho_solute_p,mscore,raoult_dis,radius
       double precision, intent(out) :: rT_output(2)
       integer, intent(in) :: np
       integer, intent(inout) :: flag
@@ -5710,7 +5872,8 @@
 
         esa = deslf(prsval,tval)
         VolP = (4.0d0/3.0d0)*pi_dp*rnext**3
-        rhop = (m_s + VolP*rhow_dp)/VolP
+        ! dissolution kinetics: undissolved core displaces water volume
+        rhop = (m_s + max(VolP - max(mscore,0.0d0)/rho_solute_p,0.0d0)*rhow_dp)/VolP
 
         Rep = max( 0.0d0 , dnext*diffnorm/dble(viscosity) )
         taup = (rhop*dnext**2)/(18.0d0*rhoval*dble(viscosity))
@@ -5721,10 +5884,19 @@
 
         !!! Humidity !!!
         ! GHB prevent overflow by limiting term inside exponent:
+        if (raoult_dis .ge. 0.0d0) then
+          ! dissolution kinetics (AA&N 2007): Raoult capped at the kinetic
+          ! surface concentration C* -> kappa*C*/rho_sol, independent of V_w.
+          tmp = ((lhv*mw/ru)*((1.0d0/max(1.0d-10,tval))- &
+                (1.0d0/max(1.0d-10,Tnext)))) + &
+                ((2.0d0*mw*surften)/(ru*rhow_dp*rnext*Tnext)) - &
+                raoult_dis
+        else
         tmp = ((lhv*mw/ru)*((1.0d0/max(1.0d-10,tval))- &
               (1.0d0/max(1.0d-10,Tnext)))) + &
               ((2.0d0*mw*surften)/(ru*rhow_dp*rnext*Tnext)) - &
               ((kappa_p*m_s*rhow_dp/rho_solute_p)/(VolP*rhop-m_s))
+        end if
         if( tmp.gt.600.0 )then
           qstr = qval
           flag = 1
@@ -6623,7 +6795,8 @@
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
                         injection_rate_scale, &
-                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac
+                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
+                        dissolution_kinetics,solubility_sp,DAw_sp,prmscore,prsol,prdaw
       use constants
       use MersenneTwister_mod
 #ifdef MPI
@@ -6765,6 +6938,15 @@
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0
+            ! dissolution kinetics: injected (dry) particle starts as an
+            ! undissolved core carrying its full solute mass
+            if (dissolution_kinetics.eq.1) then
+               pdata(np,prmscore) = pdata(np,prms)
+            else
+               pdata(np,prmscore) = 0.0
+            end if
+            pdata(np,prsol) = solubility_sp(isp)
+            pdata(np,prdaw) = DAw_sp(isp)
             rad10_tmp = log10(rad_init)
             if (rad10_tmp .gt. rmax10 + 0.5*dhrad) then
                ihist = nbins
@@ -6915,6 +7097,9 @@
             pdata(np,prkap) = aerosol_kappa_background
             pdata(np,prrhosol) = 2160.0
             call lognormal_droplet(pdata(np,prrp),pdata(np,prms),pdata(np,prkap),pdata(np,prrhosol),randomNumbers)
+            pdata(np,prmscore) = 0.0
+            pdata(np,prsol) = 360.0
+            pdata(np,prdaw) = 1.26e-9
             pdata(np,prrp0) = pdata(np,prrp)
             pdata(np,prtp) = 290.0
             pdata(np,prmult) = drop_mult

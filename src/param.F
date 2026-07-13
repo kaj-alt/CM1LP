@@ -319,6 +319,21 @@
       call bcast_real(rho_sp,1,max_species)
       call bcast_real(dry_diam_sp,1,max_species)
       call bcast_real(frac_sp,1,max_species)
+      call bcast_int(dissolution_kinetics)
+      call bcast_real(solubility_sp,1,max_species)
+      call bcast_real(DAw_sp,1,max_species)
+      dissolution_kinetics = max( dissolution_kinetics , 0 )
+      dissolution_kinetics = min( dissolution_kinetics , 1 )
+      IF( dissolution_kinetics.eq.1 .and. init_hydration_rh_frac.gt.0.0 )THEN
+        if(myid.eq.0)then
+          print *
+          print *,'  dissolution_kinetics=1 requires dry injection: set init_hydration_rh_frac = 0'
+          print *,'  (the C*-capped Raoult term regularizes the dry limit; Kohler-equilibrated'
+          print *,'   wet injection is inconsistent with an undissolved core)'
+          print *
+        endif
+        call stopcm1
+      ENDIF
       if(dowr) then
         frac_sum = 0.0
         do i=1,nspecies
@@ -334,6 +349,7 @@
       ! device-side drop_mult is uninitialized -> particles get prmult=0 (or garbage)
       ! -> BE_integration FATAL on GPU at any nontrivial injection load.
       !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac)
+      !$acc update device(dissolution_kinetics,solubility_sp,DAw_sp)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2762,6 +2778,7 @@
       if(dowr) write(outfile,*) 'two_way_coupling=',two_way_coupling
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
       if(dowr) write(outfile,*) 'nspecies =',nspecies
+      if(dowr) write(outfile,*) 'dissolution_kinetics =',dissolution_kinetics
       if(dowr) then
         do i=1,nspecies
           write(outfile,'(a,i2,a,f8.4,a,f8.1,a,e10.3,a,f6.3)') &
@@ -6239,6 +6256,18 @@
           npvals = npvals+1
           npvars = npvars+1
           prrhosol = npvals !Droplet solute density [kg/m^3]
+
+          npvals = npvals+1
+          npvars = npvars+1
+          prmscore = npvals !Undissolved solute core mass [kg] (dissolution kinetics)
+
+          npvals = npvals+1
+          npvars = npvars+1
+          prsol = npvals !Solute solubility [kg per m^3 water] (dissolution kinetics)
+
+          npvals = npvals+1
+          npvars = npvars+1
+          prdaw = npvals !Solute aqueous diffusivity [m^2/s] (dissolution kinetics)
 
           npvals = npvals+1
           npvars = npvars+1
