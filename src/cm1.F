@@ -278,8 +278,6 @@ end module cuda_rt
       double precision :: adaptmovetim
       integer :: mvrec,nwritemv
 
-      integer :: ifields
-
 #ifdef MPI
       integer :: reqs,rc,ii,jj,id,itmp1,itmp2,jtmp1,jtmp2
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -2518,18 +2516,11 @@ end module cuda_rt
                         emiss,thc,albd,znt,rznt,mavail,dsxy,prs0s,prs0,   &
                         tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,z0base)
 
-      ! KJ Run X: ifields=0 for cold-start (no restart-from-fields).
-      ! The cm1rst_000005_* spinup was written with ptype=0 (numq=1) so
-      ! ptype=7 (numq=2 incl. qc) read fails with FIO-F-253. Cold-start
-      ! sidesteps the restart-format mismatch; spinup runs from initial
-      ! sounding for ~50-100 free-fall times before turbulence is dev'd.
-      ! (My previous Run X commit set ifields=1 — that's reverted here.)
-      ! 2026-07-13: ifields=1 restored. The FIO-F-253 numq mismatch no longer
-      ! applies: parent 256dx_18Kdt_ptype7_unladen_spinup_v3 was written at
-      ! ptype=7 (numq=2), matching this config. read_fields follows
-      ! restart_filetype: =2 reads numbered cm1rst_<rstnum>_{s,u,v,w}.dat,
-      ! =1 reads unnumbered cm1rst_{s,u,v,w}.dat.
-      ifields = 1
+      ! ifields is a /param2/ namelist variable (default 0 = cold start;
+      ! a60ed41 port). ifields=1 seeds fields from a spinup's restart via
+      ! read_fields — parent must match ptype/numq (FIO-F-253 otherwise).
+      ! read_fields follows restart_filetype: =2 reads numbered
+      ! cm1rst_<rstnum>_{s,u,v,w}.dat, =1 reads unnumbered.
       IF (ifields.eq.1) THEN
 
          rho = 0.0

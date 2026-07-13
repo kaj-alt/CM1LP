@@ -245,6 +245,7 @@
       call bcast_int(adapt_dt)
       call bcast_int(irst)
       call bcast_int(rstnum)
+      call bcast_int(ifields)
       call bcast_int(iconly)
       call bcast_int(hadvordrs)
       call bcast_int(vadvordrs)
@@ -636,6 +637,8 @@
 
       irst = max( irst , 0 )
       irst = min( irst , 1 )
+      ifields = max( ifields , 0 )
+      ifields = min( ifields , 1 )
       if( cm1setup.eq.2 ) tconfig = 2
       if( psolver.eq.4 .or. psolver.eq.5 ) roflux = 1
 
@@ -2700,6 +2703,7 @@
       if(dowr) write(outfile,*) 'adapt_dt  =',adapt_dt
       if(dowr) write(outfile,*) 'irst      =',irst
       if(dowr) write(outfile,*) 'rstnum    =',rstnum
+      if(dowr) write(outfile,*) 'ifields   =',ifields
       if(dowr) write(outfile,*) 'iconly    =',iconly
       if(dowr) write(outfile,*) 'hadvordrs =',hadvordrs
       if(dowr) write(outfile,*) 'vadvordrs =',vadvordrs

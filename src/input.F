@@ -241,6 +241,11 @@
       ! Set to 0 to inject at dry radius (will trip BE_integration LV_solver if r_dry < table lower bound).
       real :: init_hydration_rh_frac = 0.95
 
+      ! Field-init (a60ed41 port): 1 = seed u/v/w/scalars from a spinup's
+      ! restart field files via read_fields (follows restart_filetype+rstnum),
+      ! with the model clock starting at t=0. 0 (default) = cold start.
+      integer :: ifields = 0
+
       !$acc declare create (dx,dy,zt,rzt,umove,vmove,viscosity,pr_num,sc_num, &
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
@@ -301,7 +306,7 @@
       namelist /param1/ dx,dy,dz,dtl,timax,run_time,                    &
                         tapfrq,rstfrq,statfrq,prclfrq
       namelist /param2/                                                 &
-          cm1setup,testcase,adapt_dt,irst,rstnum,iconly,                &
+          cm1setup,testcase,adapt_dt,irst,rstnum,ifields,iconly,        &
           hadvordrs,vadvordrs,hadvordrv,vadvordrv,                      &
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
