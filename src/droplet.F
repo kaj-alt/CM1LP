@@ -6935,6 +6935,10 @@
             end if
             pdata(np,prrp)  = r_wet_sp
             pdata(np,prrp0) = r_wet_sp
+            ! rad_init feeds the injected-size histogram below; on this
+            ! (random-location N-species) path it was never assigned after the
+            ! r_wet_sp rewrite -> log10(uninitialized) trapped under -init=snan.
+            rad_init = dble(r_wet_sp)
             pdata(np,prtp) = 290.0  
             pdata(np,prmult) = drop_mult
             pdata(np,pract) = 1.0
