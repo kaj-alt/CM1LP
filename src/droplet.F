@@ -2835,6 +2835,20 @@
                         dble(pdata(np,prrp)),np)
       end if
 
+      ! Physical-root acceptance gate: a "converged" BE root with per-step
+      ! radius growth beyond anything kinetically reachable (integrated
+      ! dr/dt = s/(G r) gives ~11x/step for a fresh 100 nm particle even at
+      ! s=10%), a non-positive radius, or a particle temperature far from
+      ! ambient (codebase lore: Tp more than a few K off ambient means the
+      ! solve went bad) is a spurious attractor, not a solution. Route it
+      ! through the existing keep-radius fallback below.
+      if (flag==0) then
+        if ( rt_zeros(1) .gt. 50.0d0 .or. rt_zeros(1) .le. 0.0d0 .or. &
+             dabs(rt_zeros(2)*dble(pdata(np,prtp)) - dble(tval)) .gt. 20.0d0 ) then
+          flag = 1
+        end if
+      end if
+
       !In rare cases both nonlinear solvers fail to converge
       if (flag==1)  then
 
