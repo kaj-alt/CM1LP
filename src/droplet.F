@@ -7018,7 +7018,8 @@
                         prusgs,prvsgs,prwsgs,prsigsgs, &
                         prrp,prrp0,prtp,prms,prkap,prrhosol,pract,prtime, &
                         prmult,prt,prrho,prprs,prqv,prpidx,prprocidx,nparcelsLocalActive, &
-                        drop_mult,pi_sp,maxz
+                        drop_mult,pi_sp,maxz, &
+                        prmscore,prsol,prdaw
       use constants
       use MersenneTwister_mod
 #ifdef MPI
