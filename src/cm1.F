@@ -2524,7 +2524,10 @@ end module cuda_rt
       ! sidesteps the restart-format mismatch; spinup runs from initial
       ! sounding for ~50-100 free-fall times before turbulence is dev'd.
       ! (My previous Run X commit set ifields=1 — that's reverted here.)
-      ifields = 0
+      ! 2026-07-13: ifields=1 restored. The FIO-F-253 numq mismatch no longer
+      ! applies: parent 256dx_18Kdt_ptype7_unladen_spinup_v3 was written at
+      ! ptype=7 (numq=2), matching this config. Reads cm1rst_{s,u,v,w}.dat.
+      ifields = 1
       IF (ifields.eq.1) THEN
 
          rho = 0.0
