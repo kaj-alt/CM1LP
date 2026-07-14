@@ -2637,7 +2637,9 @@
           mysw,mynw,myeast,myse,myne,mysouth,mynorth,nparcelsLocal, &
           myid,dx,dy,pi_sp,pi_dp,ngxy,nbc,sbc,ebc,wbc,tsk0,drop_evap,drop_sgs_opt, &
           prmscore,prsol,prdaw,dissolution_kinetics
-      use constants , only : rhow,rhow_dp,undefined_index,cpl,cpl_dp,cp_dp,i8
+      use constants , only : rhow,rhow_dp,undefined_index,cpl,cpl_dp,cp_dp,i8, &
+                             mw,ru,surften,lv1_dp,lv2_dp
+      use cm1libs, only : drslf,deslf
       use comm_module
       use parcel_module
       use mpi
@@ -2685,6 +2687,9 @@
       double precision :: taup,volp,rhop,tmp_coeff
       double precision :: taup_scale,dt_nondim
       double precision :: mscore_d,raoult_dis,cstar_d,rcore_d
+      integer :: nsub_r,isub_r
+      double precision :: dt_sub,s_loc_be,kelvin_be,raoult_be,drive_be
+      double precision :: esa_be,dv_be,lhv_be,g_be,tau_r
       double precision :: guess
       double precision :: rt_zeros(2),rt_start(2)
       logical :: is_local
@@ -2790,7 +2795,52 @@
       !Nondimensionalize parameters before the solver using 1-micron water droplet as ref
       taup_scale = rhow_dp*(1.0d-6)**2/(18.0d0*dble(rhoval)*dble(viscosity))
 
-      dt_nondim = dbldt/taup_scale
+      ! --- Growth-stiffness substepping (dissolution runs) -----------------
+      ! The individual radius-relaxation timescale tau_r = G r^2 / |s - s_eq|
+      ! for a fresh sub-um particle under real drive is shorter than dt; a
+      ! single BE step over dt >> tau_r asks Newton for a finite-time
+      ! transient it cannot resolve and spurious far roots become reachable
+      ! (observed: r -> mm, Tp -> 10^3-10^4 K). Substep so each solve stays
+      ! in the physical basin. N=1 for grown droplets (tau_r >= 0.1 s at
+      ! r >= 1 um), so the cost lands only on the thin fresh-particle band.
+      ! Scoped to dissolution runs to keep default = main bit-for-bit.
+      nsub_r = 1
+      if (dissolution_kinetics.eq.1) then
+         s_loc_be = dble(qval)/max(drslf(dble(prsval),dble(tval)),1.0d-12) - 1.0d0
+         kelvin_be = 2.0d0*mw*surften/(ru*rhow_dp*max(dble(pdata(np,prrp)),1.0d-9)*dble(tval))
+         if (raoult_dis.ge.0.0d0) then
+            raoult_be = raoult_dis
+         else
+            raoult_be = dble(pdata(np,prkap))*(dble(pdata(np,prms)) &
+                        /dble(pdata(np,prrhosol)))/max(volp,1.0d-30)
+         end if
+         drive_be = dabs(s_loc_be - (kelvin_be - raoult_be))
+         esa_be = deslf(dble(prsval),dble(tval))
+         dv_be  = 2.11d-5*(dble(tval)/273.15d0)**1.94d0*(101325.0d0/dble(prsval))
+         lhv_be = lv1_dp - lv2_dp*dble(tval)
+         g_be   = rhow_dp*ru*dble(tval)/(4.0d0*esa_be*dv_be*mw) &
+                + lhv_be*rhow_dp/(4.0d0*2.55d-2*dble(tval))*(lhv_be*mw/(ru*dble(tval))-1.0d0)
+         tau_r  = g_be*dble(pdata(np,prrp))**2/max(drive_be,1.0d-6)
+         nsub_r = max(1, min(64, int(dbldt/(0.5d0*tau_r)) + 1))
+      end if
+      dt_sub = dbldt/dble(nsub_r)
+      dt_nondim = dt_sub/taup_scale
+
+      do isub_r = 1, nsub_r
+
+      ! refresh the quasi-steady dissolution state at the current radius
+      ! (the core dissolves as the shell grows within the step)
+      if (dissolution_kinetics.eq.1 .and. isub_r.gt.1) then
+         mscore_d = dble(pdata(np,prmscore))
+         raoult_dis = -1.0d0
+         if (mscore_d.gt.0.0d0) then
+            call dissolution_state(dble(pdata(np,prrp)),mscore_d, &
+                                   dble(pdata(np,prkap)),dble(pdata(np,prrhosol)), &
+                                   dble(pdata(np,prsol)),dble(pdata(np,prdaw)), &
+                                   dble(prsval),dble(tval),dble(qval), &
+                                   cstar_d,raoult_dis,rcore_d)
+         end if
+      end if
 
       guess = 0.0d0
 
@@ -2835,13 +2885,12 @@
                         dble(pdata(np,prrp)),np)
       end if
 
-      ! Physical-root acceptance gate: a "converged" BE root with per-step
-      ! radius growth beyond anything kinetically reachable (integrated
-      ! dr/dt = s/(G r) gives ~11x/step for a fresh 100 nm particle even at
-      ! s=10%), a non-positive radius, or a particle temperature far from
-      ! ambient (codebase lore: Tp more than a few K off ambient means the
-      ! solve went bad) is a spurious attractor, not a solution. Route it
-      ! through the existing keep-radius fallback below.
+      ! Physical-root acceptance gate (per substep): a "converged" BE root
+      ! with radius growth beyond anything kinetically reachable, a
+      ! non-positive radius, or a particle temperature far from ambient
+      ! (codebase lore: Tp more than a few K off ambient means the solve
+      ! went bad) is a spurious attractor, not a solution. Route it through
+      ! the existing keep-radius fallback below.
       if (flag==0) then
         if ( rt_zeros(1) .gt. 50.0d0 .or. rt_zeros(1) .le. 0.0d0 .or. &
              dabs(rt_zeros(2)*dble(pdata(np,prtp)) - dble(tval)) .gt. 20.0d0 ) then
@@ -2873,6 +2922,8 @@
                                      dble(pdata(np,prrhosol)))
         pdata(np,prmscore) = sngl(mscore_d)
       end if
+
+      end do  ! isub_r growth substeps
 
       else !If droplet evaporation is turned off, leave radius unchanged and update temperature via BE
 
