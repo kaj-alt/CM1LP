@@ -23,7 +23,7 @@
           kbc,kec,ni,nj,nk,rdx,rdy,rdz,wbc,ebc,nbc,sbc,ibw,ibe,ibs,ibn,sc_num,pr_num,cm1setup, &
           cgs1,cgs2,cgs3,cgt1,cgt2,cgt3,viscosity,axisymm,timestats,time_ttend,mytime,bc_temp, &
           ptc_bot,ptc_top,dohturb,dovturb,base_pbot,base_pibot,base_ptop,base_pitop,doimpl, &
-          bcturbs,terrain_flag,ptc_n,ptc_s,ptc_w,ptc_e
+          bcturbs,terrain_flag,ptc_n,ptc_s,ptc_w,ptc_e,sidewall_rh_frac
       use constants
       use cm1libs , only : rslf,rsif
       implicit none
@@ -162,7 +162,7 @@
               if (ivar.eq.1) then
                 ptc_w_tmp = ptc_w/pi0(1,j,k) - th0r
               elseif (ivar.eq.2) then
-                ptc_w_tmp = rslf(prs0(1,j,k),ptc_w)
+                ptc_w_tmp = sidewall_rh_frac*rslf(prs0(1,j,k),ptc_w)
               endif
               dumx(1,j,k) = -kappa*2.0*(s(1,j,k)-ptc_w_tmp)*rdx*(rho(1,j,k)+rho(2,j,k))*uf(1)*0.5
             enddo
@@ -177,7 +177,7 @@
               if (ivar.eq.1) then
                 ptc_e_tmp = ptc_e/pi0(ni,j,k) - th0r
               elseif (ivar.eq.2) then
-                ptc_e_tmp = rslf(prs0(ni,j,k),ptc_e)
+                ptc_e_tmp = sidewall_rh_frac*rslf(prs0(ni,j,k),ptc_e)
               endif
               dumx(ni+1,j,k) = kappa*2.0*(s(ni,j,k)-ptc_e_tmp)*rdx*(rho(ni,j,k)+rho(ni-1,j,k))*uf(ni)*0.5
             enddo
@@ -192,7 +192,7 @@
               if (ivar.eq.1) then
                 ptc_s_tmp = ptc_s/pi0(i,1,k) - th0r
               elseif (ivar.eq.2) then
-                ptc_s_tmp = rslf(prs0(i,1,k),ptc_s)
+                ptc_s_tmp = sidewall_rh_frac*rslf(prs0(i,1,k),ptc_s)
               endif
               dumy(i,1,k) = -kappa*2.0*(s(i,1,k)-ptc_s_tmp)*rdy*(rho(i,1,k)+rho(i,2,k))*vf(1)*0.5
             enddo
@@ -207,7 +207,7 @@
               if (ivar.eq.1) then
                 ptc_n_tmp = ptc_n/pi0(i,nj,k) - th0r
               elseif (ivar.eq.2) then
-                ptc_n_tmp = rslf(prs0(i,nj,k),ptc_n)
+                ptc_n_tmp = sidewall_rh_frac*rslf(prs0(i,nj,k),ptc_n)
               endif
               dumy(i,nj+1,k) = kappa*2.0*(s(i,nj,k)-ptc_n_tmp)*rdy*(rho(i,nj,k)+rho(i,nj-1,k))*vf(nj)*0.5
             enddo

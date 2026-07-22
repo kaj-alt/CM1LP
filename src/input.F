@@ -241,6 +241,12 @@
       ! Set to 0 to inject at dry radius (will trip BE_integration LV_solver if r_dry < table lower bound).
       real :: init_hydration_rh_frac = 0.95
 
+      ! Sidewall RH fraction for the DNS lateral Dirichlet wall BC (turbtend.F):
+      ! wall qv = sidewall_rh_frac * rslf(prs0, ptc_wall). Default 1.0 = saturated
+      ! sidewalls (unchanged behavior); <1 de-saturates the chamber vapor source
+      ! (the S/s_c activation-regime calibration knob, 2026-07-22).
+      real :: sidewall_rh_frac = 1.0
+
       ! Field-init (a60ed41 port): 1 = seed u/v/w/scalars from a spinup's
       ! restart field files via read_fields (follows restart_filetype+rstnum),
       ! with the model clock starting at t=0. 0 (default) = cold start.
@@ -252,6 +258,7 @@
       !$acc                 drop_inject_elapse,drop_inject_time,              &
       !$acc                 injection_rate_scale)
       !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
+      !$acc declare create (sidewall_rh_frac)
 
 !-----------------------------------------------------------------------
 
@@ -375,6 +382,7 @@
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
+              sidewall_rh_frac,                                               &
               coal_enabled,coal_kernel,coal_Ndx,coal_Ndy,coal_Ndz
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
