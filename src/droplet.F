@@ -479,9 +479,14 @@
     part_grav2 = 0.0
     part_grav3 = -9.81
 
-    !For Pi chamber, this is often scaled to some other value
+    !For Pi chamber: settle with the geometric mean of true and effective
+    !gravity, -sqrt(9.81*g), which preserves the settling-to-turbulence
+    !velocity ratio v_t/u' at reduced fluid g (u' ~ sqrt(g)). Computed from
+    !the fluid g (constants.F) so the two can never diverge again — the old
+    !literal -2.3122 was -sqrt(9.81*0.545), stale since g moved to 5.41
+    !(ported from cm1lp_kj main, which always had the formula form).
     if (testcase.eq.16) then
-       part_grav3 = -2.3122
+       part_grav3 = -sqrt(9.81*g)
     end if
 
 
