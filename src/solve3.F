@@ -362,7 +362,7 @@
       double precision :: dbldt_dropsub,mtime_dropsub
       double precision :: sumRH_local,sumRH_global,count_local,count_global
       double precision :: meanRH,meanRH_pct,new_sink,new_mult
-      real :: qvs_rh,t_rh,rh_cell
+      real :: qvs_rh,t_rh,rh_cell,vol_cell
       logical :: humctrl_due,use_sink_mode
 
 !--------------------------------------------------------------------
@@ -1099,16 +1099,22 @@
               endif
 
               if (humctrl_due) then
+                ! Volume-weighted mean RH: on the stretched grid a count-mean
+                ! over-weights the refined wall/plate cells (~ +0.12% RH at 256^3
+                ! Pi-chamber stretching) and is resolution-dependent.  Weight each
+                ! cell by its volume, ruh*rvh*rmh (constant dx*dy*dz cancels).
                 sumRH_local = 0.0d0
-                count_local = dble(ni)*dble(nj)*dble(nk)
-                !$acc parallel loop gang vector collapse(3) default(present) private(i,j,k,qvs_rh,t_rh,rh_cell) reduction(+:sumRH_local)
+                count_local = 0.0d0
+                !$acc parallel loop gang vector collapse(3) default(present) private(i,j,k,qvs_rh,t_rh,rh_cell,vol_cell) reduction(+:sumRH_local,count_local)
                 do k=1,nk
                 do j=1,nj
                 do i=1,ni
                   t_rh = (th0(i,j,k)+th3d(i,j,k))*(pi0(i,j,k)+ppi(i,j,k))
                   qvs_rh = rslf( prs(i,j,k) , t_rh )
                   rh_cell = q3d(i,j,k,nqv)*(1.0+qvs_rh*reps) / (max(1.0e-12,qvs_rh)*(1.0+q3d(i,j,k,nqv)*reps))
-                  sumRH_local = sumRH_local + dble(rh_cell)
+                  vol_cell = ruh(i)*rvh(j)*rmh(i,j,k)
+                  sumRH_local = sumRH_local + dble(rh_cell)*dble(vol_cell)
+                  count_local = count_local + dble(vol_cell)
                 enddo
                 enddo
                 enddo
@@ -1139,9 +1145,9 @@
 
                 if (myid.eq.0) then
                   if (use_sink_mode) then
-                    write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' sink=',humidity_sink
+                    write(*,'(a,f12.4,a,f10.4,a,es12.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH_vw(%)=',meanRH_pct,' sink=',humidity_sink
                   else
-                    write(*,'(a,f12.4,a,f10.4,a,f10.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH(%)=',meanRH_pct,' wall_mult=',humidity_wall_mult
+                    write(*,'(a,f12.4,a,f10.4,a,f10.4)') 'HUMCTRL time=',mtime_dropsub,' meanRH_vw(%)=',meanRH_pct,' wall_mult=',humidity_wall_mult
                   endif
                 endif
               endif
