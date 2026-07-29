@@ -802,6 +802,9 @@
       call disp_err( nf90_def_var(ncid,"umove" ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"vmove" ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"adaptmovetim" ,nf90_double,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_sink" ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_wall_mult" ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"humidity_last_update" ,nf90_double,(/timeid/),varid) , .true. )
 
       call disp_err( nf90_def_var(ncid,"cflmax"  ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_put_att(ncid,varid,"long_name","max Courant number from previous timestep") , .true. )

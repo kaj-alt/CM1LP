@@ -180,6 +180,21 @@
 
       if(dowr) write(outfile,*) 'Inside PARAM'
 
+      ! defaults for testcase 16 humidity sink/controller (Pi chamber)
+      humidity_control = 0
+      humidity_mode = 1
+      humidity_target_rh = 100.0
+      humidity_sink = 1.74e-6
+      humidity_sink_gain = 0.0
+      humidity_sink_min = 0.0
+      humidity_sink_max = 1.0e-3
+      humidity_control_elapse = 1.0
+      humidity_wall_mult = 1.0
+      humidity_wall_mult_gain = 0.0
+      humidity_wall_mult_min = 0.0
+      humidity_wall_mult_max = 2.0
+      humidity_last_update = -1.0d0
+
 #ifndef MPI
 !--------------------------------------------------------------
 
@@ -303,6 +318,8 @@
       call bcast_int(two_way_coupling) ! DEVICE
       call bcast_int(drop_evap) ! DEVICE
       call bcast_int(drop_traj) ! DEVICE
+      call bcast_int(humidity_control)
+      call bcast_int(humidity_mode)
       call bcast_int(drop_sgs_opt) ! DEVICE
       call bcast_log(coal_enabled) ! DEVICE
       call bcast_int(coal_kernel) ! DEVICE
@@ -313,6 +330,16 @@
       call bcast_real(drop_inject_elapse)
       call bcast_real(drop_inject_time)
       call bcast_real(drop_mult)
+      call bcast_real(humidity_target_rh)
+      call bcast_real(humidity_sink)
+      call bcast_real(humidity_sink_gain)
+      call bcast_real(humidity_sink_min)
+      call bcast_real(humidity_sink_max)
+      call bcast_real(humidity_control_elapse)
+      call bcast_real(humidity_wall_mult)
+      call bcast_real(humidity_wall_mult_gain)
+      call bcast_real(humidity_wall_mult_min)
+      call bcast_real(humidity_wall_mult_max)
       call bcast_real(injection_rate_scale)
       call bcast_int(nspecies)
       call bcast_real(kappa_sp,1,max_species)
@@ -337,7 +364,10 @@
       ! at droplet.F:5422 (pdata(np,prmult) = drop_mult). Without this sync the
       ! device-side drop_mult is uninitialized -> particles get prmult=0 (or garbage)
       ! -> BE_integration FATAL on GPU at any nontrivial injection load.
-      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac)
+      ! humidity_mode/humidity_sink/humidity_wall_mult are read inside device
+      ! kernels (solve3.F coupling loop, turbtend.F wall BCs) -- same devsync
+      ! requirement as the injection scalars.
+      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac,humidity_mode,humidity_sink,humidity_wall_mult)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2450,6 +2480,8 @@
         call stopcm1
       endif
 
+      call summarize_humidity_config
+
 !  end fatal checks  (ie, model stops)
 !--------------------------------------------------------------
 !  Some basic checks:
@@ -2765,6 +2797,20 @@
       if(dowr) write(outfile,*) 'nparcelsMax=',nparcelsMax
       if(dowr) write(outfile,*) 'two_way_coupling=',two_way_coupling
       if(dowr) write(outfile,*) 'drop_evap=',drop_evap
+      if(dowr) write(outfile,*) 'humidity_control=',humidity_control
+      if(dowr) write(outfile,*) 'humidity_mode=',humidity_mode
+      if(dowr) write(outfile,*) 'humidity_target_rh(%)=',humidity_target_rh
+      if(dowr) write(outfile,*) 'humidity_sink=',humidity_sink
+      if(dowr) write(outfile,*) 'humidity_sink_gain=',humidity_sink_gain
+      if(dowr) write(outfile,*) 'humidity_sink_min=',humidity_sink_min
+      if(dowr) write(outfile,*) 'humidity_sink_max=',humidity_sink_max
+      if(dowr) write(outfile,*) 'humidity_control_elapse(s)=',humidity_control_elapse
+      if(dowr) write(outfile,*) 'humidity_wall_mult=',humidity_wall_mult
+      if(dowr) write(outfile,*) 'humidity_wall_mult_gain=',humidity_wall_mult_gain
+      if(dowr) write(outfile,*) 'humidity_wall_mult_min=',humidity_wall_mult_min
+      if(dowr) write(outfile,*) 'humidity_wall_mult_max=',humidity_wall_mult_max
+      if(dowr) write(outfile,*) 'humidity_mode meaning: 1=domain sink, 2=wall humidity multiplier'
+      if(dowr) write(outfile,*) 'humidity_control meaning: 0=fixed actuator, 1=RH feedback'
       if(dowr) write(outfile,*) 'nspecies =',nspecies
       if(dowr) then
         do i=1,nspecies
@@ -9563,6 +9609,150 @@
 
 
       end subroutine param
+
+    !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+      subroutine summarize_humidity_config
+      use input
+#ifdef MPI
+      use mpi
+#endif
+      implicit none
+
+      real, parameter :: heps = 1.0e-12
+      logical :: sink_mode, wall_mode, feedback_on
+      logical :: west_wall_active, east_wall_active
+      logical :: south_wall_active, north_wall_active
+      logical :: any_wall_active
+      logical :: sink_settings_active, wall_settings_active
+      logical :: sink_settings_tuned, wall_settings_tuned
+
+      sink_mode = (humidity_mode.eq.1)
+      wall_mode = (humidity_mode.eq.2)
+      feedback_on = (humidity_control.eq.1)
+
+      west_wall_active = (cm1setup.eq.3 .and. wbc.eq.4)
+      east_wall_active = (cm1setup.eq.3 .and. ebc.eq.4)
+      south_wall_active = (cm1setup.eq.3 .and. sbc.eq.4)
+      north_wall_active = (cm1setup.eq.3 .and. nbc.eq.4)
+      any_wall_active = west_wall_active .or. east_wall_active .or. &
+                        south_wall_active .or. north_wall_active
+
+      sink_settings_active = sink_mode
+      wall_settings_active = wall_mode .and. any_wall_active
+
+      sink_settings_tuned = abs(humidity_sink-1.74e-6).gt.heps .or. &
+                            abs(humidity_sink_gain).gt.heps .or. &
+                            abs(humidity_sink_min).gt.heps .or. &
+                            abs(humidity_sink_max-1.0e-3).gt.heps
+      wall_settings_tuned = abs(humidity_wall_mult-1.0).gt.heps .or. &
+                            abs(humidity_wall_mult_gain).gt.heps .or. &
+                            abs(humidity_wall_mult_min).gt.heps .or. &
+                            abs(humidity_wall_mult_max-2.0).gt.heps
+
+      if( humidity_mode.ne.1 .and. humidity_mode.ne.2 )then
+        if(myid.eq.0)then
+          print *
+          print *,'  humidity_mode = ',humidity_mode
+          print *,'  humidity_mode must be 1 (domain sink) or 2 (wall multiplier)'
+          print *,'   stopping model .... '
+          print *
+          if(dowr)then
+            write(outfile,*)
+            write(outfile,*) '  humidity_mode = ',humidity_mode
+            write(outfile,*) '  humidity_mode must be 1 (domain sink) or 2 (wall multiplier)'
+            write(outfile,*) '   stopping model .... '
+            write(outfile,*)
+          endif
+        endif
+#ifdef MPI
+        call MPI_BARRIER (MPI_COMM_WORLD,ierr)
+#endif
+        call stopcm1
+      endif
+
+      if(myid.ne.0) return
+
+      print *
+      print *,'  Humidity config summary:'
+      if(dowr) write(outfile,*)
+      if(dowr) write(outfile,*) '  Humidity config summary:'
+
+      if(sink_mode)then
+        print *,'    actuator: domain-wide vapor sink (testcase 16 only)'
+        if(dowr) write(outfile,*) '    actuator: domain-wide vapor sink (testcase 16 only)'
+        if(feedback_on)then
+          print *,'    feedback: enabled (updates humidity_sink)'
+          if(dowr) write(outfile,*) '    feedback: enabled (updates humidity_sink)'
+        else
+          print *,'    feedback: disabled (humidity_sink stays fixed)'
+          if(dowr) write(outfile,*) '    feedback: disabled (humidity_sink stays fixed)'
+        endif
+        if(testcase.ne.16)then
+          print *,'    WARNING: mode 1 is only applied for testcase 16 in solve3.F'
+          if(dowr) write(outfile,*) '    WARNING: mode 1 is only applied for testcase 16 in solve3.F'
+        endif
+      else
+        print *,'    actuator: wall humidity multiplier'
+        if(dowr) write(outfile,*) '    actuator: wall humidity multiplier'
+        if(feedback_on)then
+          print *,'    feedback: enabled (updates humidity_wall_mult)'
+          if(dowr) write(outfile,*) '    feedback: enabled (updates humidity_wall_mult)'
+        else
+          print *,'    feedback: disabled (humidity_wall_mult stays fixed)'
+          if(dowr) write(outfile,*) '    feedback: disabled (humidity_wall_mult stays fixed)'
+        endif
+        print *,'    note: mode 2 only affects lateral bc = 4 walls when cm1setup = 3'
+        if(dowr) write(outfile,*) '    note: mode 2 only affects lateral bc = 4 walls when cm1setup = 3'
+        if(any_wall_active)then
+          print *,'    active wall-mult sides (bc=4):'
+          if(dowr) write(outfile,*) '    active wall-mult sides (bc=4):'
+          if(west_wall_active)then
+            print *,'      west'
+            if(dowr) write(outfile,*) '      west'
+          endif
+          if(east_wall_active)then
+            print *,'      east'
+            if(dowr) write(outfile,*) '      east'
+          endif
+          if(south_wall_active)then
+            print *,'      south'
+            if(dowr) write(outfile,*) '      south'
+          endif
+          if(north_wall_active)then
+            print *,'      north'
+            if(dowr) write(outfile,*) '      north'
+          endif
+        else
+          print *,'    WARNING: no lateral side uses bc = 4, so humidity_wall_mult is inert'
+          if(dowr) write(outfile,*) '    WARNING: no lateral side uses bc = 4, so humidity_wall_mult is inert'
+        endif
+      endif
+
+      if(humidity_control.ne.0 .and. humidity_control.ne.1)then
+        print *,'    WARNING: humidity_control is not 0/1; only value 1 enables feedback'
+        if(dowr) write(outfile,*) '    WARNING: humidity_control is not 0/1; only value 1 enables feedback'
+      endif
+
+      if((.not.sink_settings_active) .and. sink_settings_tuned)then
+        print *,'    WARNING: humidity_sink* settings are inactive for this configuration'
+        if(dowr) write(outfile,*) '    WARNING: humidity_sink* settings are inactive for this configuration'
+      endif
+
+      if((.not.wall_settings_active) .and. wall_settings_tuned)then
+        print *,'    WARNING: humidity_wall_mult* settings are inactive for this configuration'
+        if(dowr) write(outfile,*) '    WARNING: humidity_wall_mult* settings are inactive for this configuration'
+      endif
+
+      if(.not.feedback_on)then
+        print *,'    note: humidity_target_rh, gains, and bounds are only used when humidity_control = 1'
+        if(dowr) write(outfile,*) '    note: humidity_target_rh, gains, and bounds are only used when humidity_control = 1'
+      endif
+
+      print *
+      if(dowr) write(outfile,*)
+
+      end subroutine summarize_humidity_config
 
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

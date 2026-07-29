@@ -132,6 +132,12 @@
       reset = .true.
     ENDIF
 
+      nstat = nstat+1
+      rstat(nstat) = humidity_sink
+
+      nstat = nstat+1
+      rstat(nstat) = humidity_wall_mult
+
       if(stat_w.eq.1) call maxmin(ni,nj,nk+1,wa,nstat,rstat,kmin,kmax,'WMAX  ','WMIN  ')
 
       if( stat_w.eq.1 .and. (.not. terrain_flag) )then
@@ -700,6 +706,16 @@
       desc_stat(stat_out) = 'average timestep dt'
       unit_stat(stat_out) = 's'
     endif
+
+      stat_out = stat_out+1
+      name_stat(stat_out) = 'hsink'
+      desc_stat(stat_out) = 'humidity sink applied to qv tendency'
+      unit_stat(stat_out) = '1/s'
+
+      stat_out = stat_out+1
+      name_stat(stat_out) = 'hwall'
+      desc_stat(stat_out) = 'humidity wall multiplier applied at chamber walls'
+      unit_stat(stat_out) = 'nondimensional'
 
     if(stat_w.eq.1)then
       stat_out = stat_out+1
