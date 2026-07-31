@@ -6565,9 +6565,16 @@
       if(dowr) write(outfile,*) '    pract    = ',pract
       if(dowr) write(outfile,*)
 
+      ! prmscore/prsol/prdaw are pdata COLUMN INDICES read/written inside device
+      ! kernels (injection init, BE_integration dissolution path). They were in
+      ! declare create but missing from this update -> uninitialized device
+      ! indices -> pdata(np,garbage) wild reads/writes -> corrupted particle
+      ! air state and BAD KOHLER aborts on GPU (CPU unaffected). Same devsync
+      ! bug class as the historic drop_mult case (param.F:363).
       !$acc update device (prvpx,prvpy,prvpz,prusgs,prvsgs,prwsgs,      &
       !$acc                prsigsgs,prrp,prrp0,prms,prkap,prrhosol,prtp, &
-      !$acc                prx,pry,prz,prsig,prmult,pract,prtime)
+      !$acc                prx,pry,prz,prsig,prmult,pract,prtime,       &
+      !$acc                prmscore,prsol,prdaw)
 
 !--------------------------------------------------------------
 !  Get identity
