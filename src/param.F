@@ -350,6 +350,8 @@
       ! non-rank-0 processes kept the 0.95 default, so any namelist value
       ! other than 0.95 gave rank-inconsistent injection radii.
       call bcast_real(init_hydration_rh_frac)
+      call bcast_int(inject_mode) ! DEVICE
+      call bcast_real(inject_point_radius) ! DEVICE
       if(dowr) then
         frac_sum = 0.0
         do i=1,nspecies
@@ -367,7 +369,7 @@
       ! humidity_mode/humidity_sink/humidity_wall_mult are read inside device
       ! kernels (solve3.F coupling loop, turbtend.F wall BCs) -- same devsync
       ! requirement as the injection scalars.
-      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac,humidity_mode,humidity_sink,humidity_wall_mult)
+      !$acc update device(drop_mult,drop_inject_elapse,drop_inject_time,injection_rate_scale,nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac,humidity_mode,humidity_sink,humidity_wall_mult,inject_mode,inject_point_radius)
       call bcast_real(kdiff2)
       call bcast_real(kdiff6)
       call bcast_real(fcor)
@@ -2811,6 +2813,9 @@
       if(dowr) write(outfile,*) 'humidity_wall_mult_max=',humidity_wall_mult_max
       if(dowr) write(outfile,*) 'humidity_mode meaning: 1=domain sink, 2=wall humidity multiplier'
       if(dowr) write(outfile,*) 'humidity_control meaning: 0=fixed actuator, 1=RH feedback'
+      if(dowr) write(outfile,*) 'inject_mode=',inject_mode
+      if(dowr) write(outfile,*) 'inject_point_radius(m)=',inject_point_radius
+      if(dowr) write(outfile,*) 'inject_mode meaning: 0=uniform random, 1=domain-center point source'
       if(dowr) write(outfile,*) 'nspecies =',nspecies
       if(dowr) then
         do i=1,nspecies

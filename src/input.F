@@ -251,6 +251,16 @@
       ! Set to 0 to inject at dry radius (will trip BE_integration LV_solver if r_dry < table lower bound).
       real :: init_hydration_rh_frac = 0.95
 
+      ! Injection-location mode for the Pi chamber (testcase 16) scheduled source.
+      !   0 = baseline: uniform-random over each rank's local tile (bit-for-bit default)
+      !   1 = point source at the global domain center (x,y from minx/maxx,miny/maxy;
+      !       z at mid-height 0.5*maxz), materialized only on the rank owning the center
+      integer :: inject_mode = 0
+      ! Mode-1 jitter: superdroplets placed uniform-in-disk within this radius (m) of
+      ! the center in x-y. 0.0 = exact point (all coincident — concentrates the full
+      ! two-way-coupling source in one cell; prefer a radius of ~one grid cell).
+      real :: inject_point_radius = 0.0
+
       ! Field-init (a60ed41 port): 1 = seed u/v/w/scalars from a spinup's
       ! restart field files via read_fields (follows restart_filetype+rstnum),
       ! with the model clock starting at t=0. 0 (default) = cold start.
@@ -262,7 +272,8 @@
       !$acc                 drop_inject_elapse,drop_inject_time,              &
       !$acc                 injection_rate_scale,humidity_sink,               &
       !$acc                 humidity_wall_mult)
-      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac, &
+      !$acc                 inject_mode,inject_point_radius)
 
 !-----------------------------------------------------------------------
 
@@ -386,6 +397,7 @@
 	      drop_inject_elapse,drop_inject_time,two_way_coupling,           &
 	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
+              inject_mode,inject_point_radius,                                &
               coal_enabled,coal_kernel,coal_Ndx,coal_Ndy,coal_Ndz,            &
               humidity_control,humidity_mode,                                  &
               humidity_target_rh,humidity_sink,                               &

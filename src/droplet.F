@@ -6628,7 +6628,8 @@
                         time_phys_H2D,time_phys_D2H,time_droplet,timestats,mytime, &
                         drop_mult,tsk0,pi_sp,myid,nx,ny,nz,dx,dy,dz, &
                         injection_rate_scale, &
-                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac
+                        nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
+                        minx,maxx,miny,maxy,maxz,inject_mode,inject_point_radius
       use constants
       use MersenneTwister_mod
 #ifdef MPI
@@ -6655,6 +6656,9 @@
 
       real :: xrange,yrange,zrange
       real :: salinity
+      real :: xcen,ycen,zcen,rjit,thjit
+      logical :: i_am_center
+      logical, save :: center_echo_done = .false.
 
       integer :: j,ierr
       integer :: isp, isp_try
@@ -6666,6 +6670,32 @@
       ! droplet_scheduled_bin_source (incl. injection_rate_scale); this
       ! subroutine only materializes the accumulated owed source.
       call distribute_injection_bins(total_bin_reintro,local_bin_reintro,my_reintro)
+
+      ! Global domain center (stretch-safe; minx/maxx etc. are set in param.F
+      ! from xfref/yfref/sigmaf and are already device-resident).
+      xcen = 0.5*(minx+maxx)
+      ycen = 0.5*(miny+maxy)
+      zcen = 0.5*maxz
+
+      if (inject_mode .eq. 1) then
+         ! Point source: collapse the whole materialization onto the single rank
+         ! whose half-open tile [xf(1),xf(ni+1)) x [yf(1),yf(nj+1)) contains the
+         ! center. distribute_injection_bins is untouched for mode 0; the owed
+         ! ledger (drop_inject_bin_owed) is global, so bin_inserted stays global.
+         i_am_center = (xcen.ge.xf(1) .and. xcen.lt.xf(ni+1) .and. &
+                        ycen.ge.yf(1) .and. ycen.lt.yf(nj+1))
+         if (i_am_center) then
+            local_bin_reintro(:) = total_bin_reintro(:)
+         else
+            local_bin_reintro(:) = 0_i8
+         end if
+         my_reintro = int(sum(local_bin_reintro))
+         if (i_am_center .and. .not.center_echo_done) then
+            write(*,'(a,i6,a,3f10.5)') 'POINT INJECTION: rank',myid, &
+               ' owns domain center (x,y,z)=',xcen,ycen,zcen
+            center_echo_done = .true.
+         end if
+      end if
       bin_inserted(:) = 0_i8
 
       !Now that my_reintro has been calculated, reset to the LOCAL area for initializing droplet location
@@ -6706,7 +6736,7 @@
          !$acc data create(randomNumbers,randomNumbers%state)
          !$acc update device(ngidx)
          !$acc parallel loop gang vector default(present) reduction(+:mass_injected,eng_injected,m1_injected,m2_injected) &
-         !$acc private(randomNumbers,local_seed,ihist,idryhist,rad10_tmp,dry_rad10_tmp)
+         !$acc private(randomNumbers,local_seed,ihist,idryhist,rad10_tmp,dry_rad10_tmp,rjit,thjit)
          do j=1,my_reintro
             np=nparcelsLocalActive+j
             if (random_droplets) then
@@ -6720,12 +6750,33 @@
                ! Wet radius computed per-species below from kappa_sp + dry_diam_sp + init_hydration_rh_frac.
                ! (rad_init is unused on the N-species path — see lines below.)
 
-               !Random location
-               rand = getRandomReal(randomNumbers)
-               pdata(np,prx) = xf(1)+rand*xrange
-               rand = getRandomReal(randomNumbers)
-               pdata(np,pry) = yf(1)+rand*yrange
-               pdata(np,prz) = zrange
+               if (inject_mode .eq. 0) then
+                  !Random location over the local tile (baseline)
+                  rand = getRandomReal(randomNumbers)
+                  pdata(np,prx) = xf(1)+rand*xrange
+                  rand = getRandomReal(randomNumbers)
+                  pdata(np,pry) = yf(1)+rand*yrange
+                  pdata(np,prz) = zrange
+               else
+                  ! Point source at the global domain center, with optional
+                  ! uniform-in-disk x-y jitter. Exactly two RNG draws on every
+                  ! path so the species-selection draw below sees the same
+                  ! stream position regardless of mode/radius.
+                  if (inject_point_radius .gt. 0.0) then
+                     rand  = getRandomReal(randomNumbers)
+                     rjit  = inject_point_radius*sqrt(real(rand))
+                     rand  = getRandomReal(randomNumbers)
+                     thjit = 2.0*pi_sp*real(rand)
+                     pdata(np,prx) = xcen + rjit*cos(thjit)
+                     pdata(np,pry) = ycen + rjit*sin(thjit)
+                  else
+                     rand = getRandomReal(randomNumbers)
+                     rand = getRandomReal(randomNumbers)
+                     pdata(np,prx) = xcen
+                     pdata(np,pry) = ycen
+                  end if
+                  pdata(np,prz) = zcen
+               end if
             else
                rad_init = 1.0e-6
                pdata(np,prx) = xf(1) + xrange/2.0
