@@ -6657,7 +6657,10 @@
       real :: xrange,yrange,zrange
       real :: salinity
       real :: xcen,ycen,zcen,rjit,thjit
-      logical :: i_am_center
+      real :: px,py
+      real, allocatable :: px_keep(:),py_keep(:)
+      integer :: total_request_i,npos_keep,jj,pos_seed
+      type(randomNumberSequence) :: randomNumbersPos
       logical, save :: center_echo_done = .false.
 
       integer :: j,ierr
@@ -6678,23 +6681,53 @@
       zcen = 0.5*maxz
 
       if (inject_mode .eq. 1) then
-         ! Point source: collapse the whole materialization onto the single rank
-         ! whose half-open tile [xf(1),xf(ni+1)) x [yf(1),yf(nj+1)) contains the
-         ! center. distribute_injection_bins is untouched for mode 0; the owed
-         ! ledger (drop_inject_bin_owed) is global, so bin_inserted stays global.
-         i_am_center = (xcen.ge.xf(1) .and. xcen.lt.xf(ni+1) .and. &
-                        ycen.ge.yf(1) .and. ycen.lt.yf(nj+1))
-         if (i_am_center) then
-            local_bin_reintro(:) = total_bin_reintro(:)
-         else
-            local_bin_reintro(:) = 0_i8
-         end if
-         my_reintro = int(sum(local_bin_reintro))
-         if (i_am_center .and. .not.center_echo_done) then
-            write(*,'(a,i6,a,3f10.5)') 'POINT INJECTION: rank',myid, &
-               ' owns domain center (x,y,z)=',xcen,ycen,zcen
+         ! Point source: draw the jittered positions for the WHOLE global
+         ! request identically on every rank (rank-independent seed, same
+         ! idiom as droplet_bin_request), then each rank materializes exactly
+         ! the particles whose position lands in its own half-open tile
+         ! [xf(1),xf(ni+1)) x [yf(1),yf(nj+1)).  A single-owner scheme is
+         ! wrong whenever the jitter disk straddles tile boundaries (the
+         ! domain center is a 4-tile corner under an even decomposition):
+         ! particles born off-tile have no valid location index, and the
+         ! post-injection interpolation loop spins forever on
+         ! zf(undefined_index,...) on device.  The owed ledger
+         ! (drop_inject_bin_owed) stays global, so bin_inserted stays global.
+         total_request_i = int(sum(total_bin_reintro))
+         allocate(px_keep(max(1,total_request_i)),py_keep(max(1,total_request_i)))
+         ! drop_inject_sample_count was already advanced (rank-uniformly) by
+         ! droplet_bin_request this materialization, so it gives a fresh,
+         ! rank-independent, restart-consistent seed.
+         pos_seed = 224737 + 104729*drop_inject_sample_count
+         call new_RandomNumberSequence(randomNumbersPos, pos_seed)
+         npos_keep = 0
+         do jj=1,total_request_i
+            if (inject_point_radius .gt. 0.0) then
+               rand  = getRandomReal(randomNumbersPos)
+               rjit  = inject_point_radius*sqrt(real(rand))
+               rand  = getRandomReal(randomNumbersPos)
+               thjit = 2.0*pi_sp*real(rand)
+               px = xcen + rjit*cos(thjit)
+               py = ycen + rjit*sin(thjit)
+            else
+               px = xcen
+               py = ycen
+            end if
+            if (px.ge.xf(1) .and. px.lt.xf(ni+1) .and. &
+                py.ge.yf(1) .and. py.lt.yf(nj+1)) then
+               npos_keep = npos_keep + 1
+               px_keep(npos_keep) = px
+               py_keep(npos_keep) = py
+            end if
+         end do
+         call finalize_RandomNumberSequence(randomNumbersPos)
+         my_reintro = npos_keep
+         if (npos_keep.gt.0 .and. .not.center_echo_done) then
+            write(*,'(a,i6,a,i6,a,3f10.5)') 'POINT INJECTION: rank',myid, &
+               ' materializes',npos_keep,' near center (x,y,z)=',xcen,ycen,zcen
             center_echo_done = .true.
          end if
+      else
+         allocate(px_keep(1),py_keep(1))
       end if
       bin_inserted(:) = 0_i8
 
@@ -6733,10 +6766,10 @@
 
          bin_inserted(:) = total_bin_reintro(:)
 
-         !$acc data create(randomNumbers,randomNumbers%state)
+         !$acc data create(randomNumbers,randomNumbers%state) copyin(px_keep,py_keep)
          !$acc update device(ngidx)
          !$acc parallel loop gang vector default(present) reduction(+:mass_injected,eng_injected,m1_injected,m2_injected) &
-         !$acc private(randomNumbers,local_seed,ihist,idryhist,rad10_tmp,dry_rad10_tmp,rjit,thjit)
+         !$acc private(randomNumbers,local_seed,ihist,idryhist,rad10_tmp,dry_rad10_tmp)
          do j=1,my_reintro
             np=nparcelsLocalActive+j
             if (random_droplets) then
@@ -6758,23 +6791,11 @@
                   pdata(np,pry) = yf(1)+rand*yrange
                   pdata(np,prz) = zrange
                else
-                  ! Point source at the global domain center, with optional
-                  ! uniform-in-disk x-y jitter. Exactly two RNG draws on every
-                  ! path so the species-selection draw below sees the same
-                  ! stream position regardless of mode/radius.
-                  if (inject_point_radius .gt. 0.0) then
-                     rand  = getRandomReal(randomNumbers)
-                     rjit  = inject_point_radius*sqrt(real(rand))
-                     rand  = getRandomReal(randomNumbers)
-                     thjit = 2.0*pi_sp*real(rand)
-                     pdata(np,prx) = xcen + rjit*cos(thjit)
-                     pdata(np,pry) = ycen + rjit*sin(thjit)
-                  else
-                     rand = getRandomReal(randomNumbers)
-                     rand = getRandomReal(randomNumbers)
-                     pdata(np,prx) = xcen
-                     pdata(np,pry) = ycen
-                  end if
+                  ! Point source: positions were pre-drawn host-side with a
+                  ! rank-independent seed and partitioned by tile ownership
+                  ! (see the inject_mode block above) — no in-kernel draws.
+                  pdata(np,prx) = px_keep(j)
+                  pdata(np,pry) = py_keep(j)
                   pdata(np,prz) = zcen
                end if
             else

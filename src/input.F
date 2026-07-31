@@ -254,7 +254,8 @@
       ! Injection-location mode for the Pi chamber (testcase 16) scheduled source.
       !   0 = baseline: uniform-random over each rank's local tile (bit-for-bit default)
       !   1 = point source at the global domain center (x,y from minx/maxx,miny/maxy;
-      !       z at mid-height 0.5*maxz), materialized only on the rank owning the center
+      !       z at mid-height 0.5*maxz); jittered positions are drawn rank-uniformly
+      !       and each rank materializes the particles landing in its own tile
       integer :: inject_mode = 0
       ! Mode-1 jitter: superdroplets placed uniform-in-disk within this radius (m) of
       ! the center in x-y. 0.0 = exact point (all coincident — concentrates the full
