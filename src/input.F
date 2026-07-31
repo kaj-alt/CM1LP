@@ -125,7 +125,7 @@
               prcl_th,prcl_t,prcl_prs,prcl_ptra,prcl_q,prcl_nc,               &
               prcl_km,prcl_kh,prcl_tke,prcl_dbz,prcl_b,prcl_vpg,prcl_vort,    &
               prcl_rho,prcl_qsat,prcl_sfc,prcl_droplet,two_way_coupling,      &
-	      drop_evap,drop_traj,                                            &
+	      drop_evap,drop_traj,humidity_control,humidity_mode,             &
               n_out,s_out,u_out,v_out,w_out,z_out,sout2d,sout3d,              &
               stat_w,stat_wlevs,stat_u,stat_v,stat_rmw,                       &
               stat_pipert,stat_prspert,stat_thpert,stat_q,                    &
@@ -180,7 +180,7 @@
       !$acc                 prx,pry,prz,prsig,ngxy,ngz,ptype,pru,prv,prw,     &
       !$acc                 ibw,ibe,ibs,ibn,ibc,iec,jbc,jec,kbc,kec,          &
       !$acc                 ibt,iet,jbt,jet,kbt,ket,two_way_coupling,         &
-      !$acc                 drop_evap,drop_traj,drop_sgs_opt,                 &
+      !$acc                 drop_evap,drop_traj,drop_sgs_opt,humidity_mode,   &
       !$acc                 coal_enabled,coal_kernel,                          &
       !$acc                 coal_Ndx,coal_Ndy,coal_Ndz,                       &
       !$acc                 prt,prqv,prprs,prrho,nparcelsLocal,               &
@@ -224,7 +224,17 @@
            adapt_move_frq,                                                    &
            base_pbot,base_ptop,base_thbot,base_thtop,base_qvbot,base_qvtop,   &
            base_tbot,base_ttop,base_pibot,base_pitop,drop_mult,               &
-           drop_inject_elapse,drop_inject_time
+           drop_inject_elapse,drop_inject_time,                               &
+           humidity_target_rh,humidity_sink,humidity_sink_gain,               &
+           humidity_sink_min,humidity_sink_max,humidity_control_elapse,       &
+           humidity_wall_mult,humidity_wall_mult_gain,                        &
+           humidity_wall_mult_min,humidity_wall_mult_max
+
+      ! Testcase-16 humidity control (ported from cm1lp_kj main): mode 1 applies a
+      ! spatially uniform constant-rate vapor sink (kg/kg/s) to qv; mode 2 scales the
+      ! sidewall Dirichlet scalar BC. humidity_control=1 adds a slow integral
+      ! controller that adjusts the sink (or wall mult) toward humidity_target_rh.
+      double precision :: humidity_last_update
 
       ! Scale factor on the hardcoded Pi-chamber injection rate (droplet.F droplet_injection_pi).
       ! 1.0 (default) preserves baseline 0.01 #/cc/min. Increase to inject more superdroplets
@@ -254,6 +264,16 @@
       real :: solubility_sp(max_species) = (/ 360.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
       real :: DAw_sp(max_species) = (/ 1.26e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 /)
 
+      ! Injection-location mode for the Pi chamber (testcase 16) scheduled source.
+      !   0 = baseline: uniform-random over each rank's local tile (bit-for-bit default)
+      !   1 = point source at the global domain center (x,y from minx/maxx,miny/maxy;
+      !       z at mid-height 0.5*maxz), materialized only on the rank owning the center
+      integer :: inject_mode = 0
+      ! Mode-1 jitter: superdroplets placed uniform-in-disk within this radius (m) of
+      ! the center in x-y. 0.0 = exact point (all coincident — concentrates the full
+      ! two-way-coupling source in one cell; prefer a radius of ~one grid cell).
+      real :: inject_point_radius = 0.0
+
       ! Field-init (a60ed41 port): 1 = seed u/v/w/scalars from a spinup's
       ! restart field files via read_fields (follows restart_filetype+rstnum),
       ! with the model clock starting at t=0. 0 (default) = cold start.
@@ -263,8 +283,10 @@
       !$acc                 ptc_n,ptc_s,ptc_e,ptc_w,                          &
       !$acc                 minx,maxx,miny,maxy,maxz,tsk0,drop_mult,           &
       !$acc                 drop_inject_elapse,drop_inject_time,              &
-      !$acc                 injection_rate_scale)
-      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac)
+      !$acc                 injection_rate_scale,humidity_sink,               &
+      !$acc                 humidity_wall_mult)
+      !$acc declare create (kappa_sp,rho_sp,dry_diam_sp,frac_sp,nspecies,init_hydration_rh_frac, &
+      !$acc                 inject_mode,inject_point_radius)
       !$acc declare create (dissolution_kinetics,solubility_sp,DAw_sp)
 
 !-----------------------------------------------------------------------
@@ -390,7 +412,14 @@
 	      drop_evap,drop_traj,drop_sgs_opt,injection_rate_scale, &
               nspecies,kappa_sp,rho_sp,dry_diam_sp,frac_sp,init_hydration_rh_frac, &
               dissolution_kinetics,solubility_sp,DAw_sp,                      &
-              coal_enabled,coal_kernel,coal_Ndx,coal_Ndy,coal_Ndz
+              inject_mode,inject_point_radius,                                &
+              coal_enabled,coal_kernel,coal_Ndx,coal_Ndy,coal_Ndz,            &
+              humidity_control,humidity_mode,                                  &
+              humidity_target_rh,humidity_sink,                               &
+              humidity_sink_gain,humidity_sink_min,humidity_sink_max,         &
+              humidity_control_elapse,                                        &
+              humidity_wall_mult,humidity_wall_mult_gain,                     &
+              humidity_wall_mult_min,humidity_wall_mult_max
       namelist /param14/                                                      &
               dodomaindiag,diagfrq
       namelist /param15/                                                      &
